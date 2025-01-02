@@ -26,6 +26,8 @@ lto = true
 wasm-bindgen = "0.2.99"
 console_error_panic_hook = "0.1.7"
 rand = "0.8.5"
+futures = "0.3.31"
+wasm-bindgen-futures = "0.4.49"
 
 # `wee_alloc` is a tiny allocator for wasm that is only ~1K in code size
 # compared to the default allocator's ~10K. However, it is slower than the default
@@ -36,7 +38,7 @@ wee_alloc = { version = "0.4.5", optional = true }
 # like the DOM.
 [dependencies.web-sys]
 version = "0.3.76"
-features = ["console", "Window", "Document", "Element", "HtmlCanvasElement", "CanvasRenderingContext2d"]
+features = ["console", "Window", "Document", "Element", "HtmlCanvasElement", "CanvasRenderingContext2d", "HtmlImageElement"]
 
 [dependencies.getrandom]
 version = "0.2.15"
