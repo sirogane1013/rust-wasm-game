@@ -29,6 +29,7 @@ console_error_panic_hook = "0.1.7"
 rand = "0.8.5"
 futures = "0.3.31"
 wasm-bindgen-futures = "0.4.49"
+anyhow = "1.0.95"
 
 # `wee_alloc` is a tiny allocator for wasm that is only ~1K in code size
 # compared to the default allocator's ~10K. However, it is slower than the default
