@@ -7,7 +7,6 @@ use std::rc::Rc;
 use std::sync::Mutex;
 use async_trait::async_trait;
 use wasm_bindgen::closure::Closure;
-use wasm_bindgen::prelude::*;
 use wasm_bindgen::{JsCast, JsValue};
 use web_sys::{CanvasRenderingContext2d, HtmlImageElement};
 
@@ -65,10 +64,10 @@ impl GameLoop {
 }
 
 pub struct Rect {
-    x: u16,
-    y: u16,
-    w: u16,
-    h: u16,
+    pub x: f32,
+    pub y: f32,
+    pub w: f32,
+    pub h: f32,
 }
 
 impl Renderer {
@@ -94,7 +93,7 @@ impl Renderer {
                 destination.w.into(),
                 destination.h.into(),
             )
-            .map_err(|e| anyhow!("Failed to draw image: {}", e))
+            .map_err(|e| anyhow!("Failed to draw image: {:#?}", e))
     }
 }
 
