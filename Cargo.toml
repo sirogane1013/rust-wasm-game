@@ -50,7 +50,8 @@ features = [
     "CanvasRenderingContext2d",
     "HtmlImageElement",
     "Response",
-    "Performance"
+    "Performance",
+    "KeyboardEvent",
 ]
 
 [dependencies.serde]
