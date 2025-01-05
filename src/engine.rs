@@ -9,9 +9,28 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::Mutex;
+use serde::Deserialize;
 use wasm_bindgen::closure::Closure;
 use wasm_bindgen::{JsCast, JsValue};
 use web_sys::{CanvasRenderingContext2d, HtmlImageElement};
+
+#[derive(Deserialize, Clone)]
+pub struct SheetRect {
+    pub x: i16,
+    pub y: i16,
+    pub w: i16,
+    pub h: i16,
+}
+
+#[derive(Deserialize, Clone)]
+pub struct Cell {
+    pub frame: SheetRect,
+}
+
+#[derive(Deserialize, Clone)]
+pub struct Sheet {
+    pub frames: HashMap<String, Cell>,
+}
 
 #[async_trait(?Send)]
 pub trait Game {
