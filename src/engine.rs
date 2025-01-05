@@ -5,11 +5,11 @@ use async_trait::async_trait;
 use futures::channel::mpsc::{unbounded, UnboundedReceiver};
 use futures::channel::oneshot::channel;
 use futures::SinkExt;
+use serde::Deserialize;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::Mutex;
-use serde::Deserialize;
 use wasm_bindgen::closure::Closure;
 use wasm_bindgen::{JsCast, JsValue};
 use web_sys::{CanvasRenderingContext2d, HtmlImageElement};
@@ -208,19 +208,14 @@ fn prepare_input() -> Result<UnboundedReceiver<KeyPress>> {
             .expect("keyup_sender cannot send keyup event");
     }) as Box<dyn FnMut(web_sys::KeyboardEvent)>);
 
-    browser::canvas()?
-        .set_onkeydown(Some(onkeydown.as_ref().unchecked_ref()));
-    browser::canvas()?
-        .set_onkeyup(Some(onkeyup.as_ref().unchecked_ref()));
+    browser::canvas()?.set_onkeydown(Some(onkeydown.as_ref().unchecked_ref()));
+    browser::canvas()?.set_onkeyup(Some(onkeyup.as_ref().unchecked_ref()));
     onkeydown.forget();
     onkeyup.forget();
     Ok(keyevent_receiver)
 }
 
-fn process_input(
-    state: &mut KeyState,
-    keyevent_receiver: &mut UnboundedReceiver<KeyPress>,
-) {
+fn process_input(state: &mut KeyState, keyevent_receiver: &mut UnboundedReceiver<KeyPress>) {
     loop {
         match keyevent_receiver.try_next() {
             Ok(None) => break,
@@ -228,7 +223,7 @@ fn process_input(
             Ok(Some(evt)) => match evt {
                 KeyPress::KeyUp(evt) => state.set_released(&evt.code()),
                 KeyPress::KeyDown(evt) => state.set_pressed(&evt.code(), evt),
-            }
+            },
         }
     }
 }

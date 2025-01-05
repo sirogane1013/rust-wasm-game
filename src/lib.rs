@@ -3,9 +3,9 @@ mod browser;
 mod engine;
 mod game;
 
-use wasm_bindgen::prelude::*;
 use crate::engine::GameLoop;
 use crate::game::WalkTheDog;
+use wasm_bindgen::prelude::*;
 
 // When the `wee_alloc` feature is enabled, this uses `wee_alloc` as the global
 // allocator.

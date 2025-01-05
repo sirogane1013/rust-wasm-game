@@ -1,11 +1,11 @@
-use std::collections::HashMap;
 use crate::engine::{Game, KeyState, Point, Rect, Renderer, Sheet};
+use crate::game::red_hat_boy_states::*;
+use crate::{browser, engine};
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use serde::Deserialize;
+use std::collections::HashMap;
 use web_sys::HtmlImageElement;
-use crate::{browser, engine};
-use crate::game::red_hat_boy_states::*;
 
 pub struct WalkTheDog {
     image: Option<HtmlImageElement>,
@@ -46,7 +46,7 @@ impl RedHatBoy {
 #[derive(Copy, Clone)]
 enum RedHatBoyStateMachine {
     Idle(RedHatBoyState<Idle>),
-    Running(RedHatBoyState<Running>)
+    Running(RedHatBoyState<Running>),
 }
 
 pub enum Event {
@@ -57,7 +57,7 @@ impl RedHatBoyStateMachine {
     fn transition(self, event: Event) -> Self {
         match (self, event) {
             (RedHatBoyStateMachine::Idle(state), Event::Run) => state.run().into(),
-            _ => self
+            _ => self,
         }
     }
 }
@@ -95,8 +95,8 @@ mod red_hat_boy_states {
             RedHatBoyState {
                 context: RedHatBoyContext {
                     frame: 0,
-                    position: Point {x: 0, y: FLOOR},
-                    velocity: Point {x: 0, y: 0}
+                    position: Point { x: 0, y: FLOOR },
+                    velocity: Point { x: 0, y: 0 },
                 },
                 _state: Idle,
             }
@@ -114,11 +114,9 @@ mod red_hat_boy_states {
 #[async_trait(?Send)]
 impl Game for WalkTheDog {
     async fn initialize(&self) -> Result<Box<dyn Game>> {
-        let sheet: Option<Sheet> = serde_wasm_bindgen::from_value(
-            browser::fetch_json("rhb.json")
-                .await?,
-        )
-            .expect("Unable to deserialize rhb.json");
+        let sheet: Option<Sheet> =
+            serde_wasm_bindgen::from_value(browser::fetch_json("rhb.json").await?)
+                .expect("Unable to deserialize rhb.json");
 
         let image = Some(engine::load_image("rhb.png").await?);
 
@@ -130,7 +128,7 @@ impl Game for WalkTheDog {
             rhb: Some(RedHatBoy::new(
                 sheet.clone().ok_or_else(|| anyhow!("No Sheet Present"))?,
                 image.clone().ok_or_else(|| anyhow!("No Image Present"))?,
-            ))
+            )),
         }))
     }
 
@@ -162,7 +160,8 @@ impl Game for WalkTheDog {
     fn draw(&self, renderer: &Renderer) {
         let current_sprite = (self.frame / 3) + 1;
         let frame_name = format!("Run ({}).png", current_sprite);
-        let sprite = self.sheet
+        let sprite = self
+            .sheet
             .as_ref()
             .and_then(|sheet| sheet.frames.get(&frame_name))
             .expect("Cell not found");
@@ -175,21 +174,23 @@ impl Game for WalkTheDog {
         });
 
         self.image.as_ref().map(|image| {
-            renderer.draw_image(
-                &image,
-                &Rect {
-                    x: sprite.frame.x.into(),
-                    y: sprite.frame.y.into(),
-                    w: sprite.frame.w.into(),
-                    h: sprite.frame.h.into(),
-                },
-                &Rect {
-                    x: self.position.x.into(),
-                    y: self.position.y.into(),
-                    w: sprite.frame.w.into(),
-                    h: sprite.frame.h.into(),
-                }
-            ).expect("failed to draw image");
+            renderer
+                .draw_image(
+                    &image,
+                    &Rect {
+                        x: sprite.frame.x.into(),
+                        y: sprite.frame.y.into(),
+                        w: sprite.frame.w.into(),
+                        h: sprite.frame.h.into(),
+                    },
+                    &Rect {
+                        x: self.position.x.into(),
+                        y: self.position.y.into(),
+                        w: sprite.frame.w.into(),
+                        h: sprite.frame.h.into(),
+                    },
+                )
+                .expect("failed to draw image");
         });
     }
 }
