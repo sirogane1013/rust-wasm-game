@@ -65,6 +65,11 @@ pub struct Point {
     pub y: i16,
 }
 
+pub struct Image {
+    element: HtmlImageElement,
+    point: Point,
+}
+
 impl KeyState {
     fn new() -> Self {
         KeyState {
@@ -140,6 +145,16 @@ impl Renderer {
             .clear_rect(rect.x.into(), rect.y.into(), rect.w.into(), rect.h.into())
     }
 
+    pub fn draw_entire_image(
+        &self,
+        image: &HtmlImageElement,
+        position: Point,
+    ) -> Result<()> {
+        self.context
+            .draw_image_with_html_image_element(image, position.x.into(), position.y.into())
+            .map_err(|e| anyhow!("Failed to draw image: {:#?}", e))
+    }
+
     pub fn draw_image(
         &self,
         image: &HtmlImageElement,
@@ -159,6 +174,16 @@ impl Renderer {
                 destination.h.into(),
             )
             .map_err(|e| anyhow!("Failed to draw image: {:#?}", e))
+    }
+}
+
+impl Image {
+    pub fn new(element: HtmlImageElement, point: Point) -> Self {
+        Self { element, point }
+    }
+
+    pub fn draw(&self, renderer: &Renderer) -> Result<()> {
+        renderer.draw_entire_image(&self.element, self.point)
     }
 }
 

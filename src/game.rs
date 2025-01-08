@@ -1,4 +1,4 @@
-use crate::engine::{Game, KeyState, Rect, Renderer, Sheet};
+use crate::engine::{Game, Image, KeyState, Point, Rect, Renderer, Sheet};
 use crate::game::red_hat_boy_states::*;
 use crate::{browser, engine};
 use anyhow::{anyhow, Result};
@@ -8,7 +8,12 @@ use web_sys::HtmlImageElement;
 
 pub enum WalkTheDog {
     Loading,
-    Loaded(RedHatBoy),
+    Loaded(Walk),
+}
+
+pub struct Walk {
+    boy: RedHatBoy,
+    background: Image,
 }
 
 struct RedHatBoy {
@@ -294,14 +299,14 @@ mod red_hat_boy_states {
         pub fn slide(self) -> RedHatBoyState<Sliding> {
             RedHatBoyState {
                 context: self.context.reset_frame(),
-                _state: Sliding {}
+                _state: Sliding {},
             }
         }
 
         pub fn jump(self) -> RedHatBoyState<Jumping> {
             RedHatBoyState {
                 context: self.context.set_vertical_velocity(JUMP_SPEED).reset_frame(),
-                _state: Jumping {}
+                _state: Jumping {},
             }
         }
     }
@@ -375,34 +380,34 @@ impl Game for WalkTheDog {
         match self {
             WalkTheDog::Loading => {
                 let json = browser::fetch_json("rhb.json").await?;
-                let rhb = RedHatBoy::new(
-                    json.into_serde()?,
-                    engine::load_image("rhb.png").await?,
-                );
+                let rhb = RedHatBoy::new(json.into_serde()?, engine::load_image("rhb.png").await?);
+                let background = engine::load_image("BG.png").await?;
 
-                Ok(Box::new(WalkTheDog::Loaded(rhb)))
-            },
-            WalkTheDog::Loaded(_) => Err(anyhow!("Error: Game is already initialized!"))
+                Ok(Box::new(WalkTheDog::Loaded(Walk {
+                    boy: rhb,
+                    background: Image::new(background, Point { x: 0, y: 0 }),
+                })))
+            }
+            WalkTheDog::Loaded(_) => Err(anyhow!("Error: Game is already initialized!")),
         }
     }
 
     fn update(&mut self, key_state: &KeyState) {
-        if let WalkTheDog::Loaded(rhb) = self {
+        if let WalkTheDog::Loaded(walk) = self {
             if key_state.is_pressed("ArrowDown") {
-                rhb.slide();
+                walk.boy.slide();
             }
             if key_state.is_pressed("ArrowUp") {}
             if key_state.is_pressed("ArrowRight") {
-                rhb.run_right();
+                walk.boy.run_right();
             }
             if key_state.is_pressed("ArrowLeft") {}
             if key_state.is_pressed("Space") {
-                rhb.jump();
+                walk.boy.jump();
             }
 
-            rhb.update();
+            walk.boy.update();
         }
-
     }
 
     fn draw(&self, renderer: &Renderer) {
@@ -413,8 +418,11 @@ impl Game for WalkTheDog {
             h: 600.0,
         });
 
-        if let WalkTheDog::Loaded(rhb) = self {
-            rhb.draw(renderer);
+        if let WalkTheDog::Loaded(walk) = self {
+            walk.background
+                .draw(renderer)
+                .expect("Failed to draw background.");
+            walk.boy.draw(renderer);
         }
     }
 }
