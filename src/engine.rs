@@ -175,6 +175,18 @@ impl Renderer {
             )
             .map_err(|e| anyhow!("Failed to draw image: {:#?}", e))
     }
+
+    pub fn draw_rect(&self, bounding_box: &Rect) {
+        self.context.set_stroke_style(&JsValue::from_str("#FF0000"));
+        self.context.begin_path();
+        self.context.rect(
+            bounding_box.x.into(),
+            bounding_box.y.into(),
+            bounding_box.w.into(),
+            bounding_box.h.into(),
+        );
+        self.context.stroke();
+    }
 }
 
 impl Image {
@@ -184,6 +196,23 @@ impl Image {
 
     pub fn draw(&self, renderer: &Renderer) -> Result<()> {
         renderer.draw_entire_image(&self.element, self.point)
+    }
+
+    pub fn draw_bounding_box(&self, renderer: &Renderer) {
+        let bounding_box = Rect::new(
+            self.point.x.into(),
+            self.point.y.into(),
+            self.element.width() as f32,
+            self.element.height() as f32,
+        );
+
+        renderer.draw_rect(&bounding_box)
+    }
+}
+
+impl Rect {
+    pub fn new(x: f32, y: f32, w: f32, h: f32) -> Self {
+        Self { x, y, w, h }
     }
 }
 

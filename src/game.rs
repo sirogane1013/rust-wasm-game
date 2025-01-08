@@ -67,6 +67,27 @@ impl RedHatBoy {
             .expect("failed to draw image");
     }
 
+    fn draw_bounding_box(&self, renderer: &Renderer) {
+        let frame_name = format!(
+            "{} ({}).png",
+            self.state_machine.frame_name(),
+            (self.state_machine.context().frame / 3) + 1,
+        );
+        let sprite = self
+            .sprite_sheet
+            .frames
+            .get(&frame_name)
+            .expect("Cell not found");
+        let bounding_box = Rect::new(
+            self.state_machine.context().position.x.into(),
+            self.state_machine.context().position.y.into(),
+            sprite.frame.w.into(),
+            sprite.frame.h.into(),
+        );
+
+        renderer.draw_rect(&bounding_box)
+    }
+
     fn run_right(&mut self) {
         self.state_machine = self.state_machine.transition(Event::Run)
     }
@@ -426,7 +447,9 @@ impl Game for WalkTheDog {
                 .draw(renderer)
                 .expect("Failed to draw background.");
             walk.boy.draw(renderer);
+            walk.boy.draw_bounding_box(renderer);
             walk.stone.draw(renderer).expect("Failed to draw stone.");
+            walk.stone.draw_bounding_box(renderer);
         }
     }
 }
