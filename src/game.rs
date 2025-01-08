@@ -14,6 +14,7 @@ pub enum WalkTheDog {
 pub struct Walk {
     boy: RedHatBoy,
     background: Image,
+    stone: Image,
 }
 
 struct RedHatBoy {
@@ -382,10 +383,12 @@ impl Game for WalkTheDog {
                 let json = browser::fetch_json("rhb.json").await?;
                 let rhb = RedHatBoy::new(json.into_serde()?, engine::load_image("rhb.png").await?);
                 let background = engine::load_image("BG.png").await?;
+                let stone = engine::load_image("Stone.png").await?;
 
                 Ok(Box::new(WalkTheDog::Loaded(Walk {
                     boy: rhb,
                     background: Image::new(background, Point { x: 0, y: 0 }),
+                    stone: Image::new(stone, Point { x: 150, y: 546 }),
                 })))
             }
             WalkTheDog::Loaded(_) => Err(anyhow!("Error: Game is already initialized!")),
@@ -423,6 +426,7 @@ impl Game for WalkTheDog {
                 .draw(renderer)
                 .expect("Failed to draw background.");
             walk.boy.draw(renderer);
+            walk.stone.draw(renderer).expect("Failed to draw stone.");
         }
     }
 }
