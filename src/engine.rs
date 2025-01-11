@@ -70,6 +70,7 @@ pub struct Point {
 pub struct Image {
     element: HtmlImageElement,
     point: Point,
+    bounding_box: Rect,
 }
 
 impl KeyState {
@@ -147,11 +148,7 @@ impl Renderer {
             .clear_rect(rect.x.into(), rect.y.into(), rect.w.into(), rect.h.into())
     }
 
-    pub fn draw_entire_image(
-        &self,
-        image: &HtmlImageElement,
-        position: Point,
-    ) -> Result<()> {
+    pub fn draw_entire_image(&self, image: &HtmlImageElement, position: Point) -> Result<()> {
         self.context
             .draw_image_with_html_image_element(image, position.x.into(), position.y.into())
             .map_err(|e| anyhow!("Failed to draw image: {:#?}", e))
@@ -193,7 +190,21 @@ impl Renderer {
 
 impl Image {
     pub fn new(element: HtmlImageElement, point: Point) -> Self {
-        Self { element, point }
+        let bounding_box = Rect {
+            x: point.x.into(),
+            y: point.y.into(),
+            w: element.width() as f32,
+            h: element.height() as f32,
+        };
+        Self {
+            element,
+            point,
+            bounding_box,
+        }
+    }
+
+    pub fn bounding_box(&self) -> &Rect {
+        &self.bounding_box
     }
 
     pub fn draw(&self, renderer: &Renderer) -> Result<()> {
@@ -201,14 +212,7 @@ impl Image {
     }
 
     pub fn draw_bounding_box(&self, renderer: &Renderer) {
-        let bounding_box = Rect::new(
-            self.point.x.into(),
-            self.point.y.into(),
-            self.element.width() as f32,
-            self.element.height() as f32,
-        );
-
-        renderer.draw_rect(&bounding_box)
+        renderer.draw_rect(&self.bounding_box)
     }
 }
 
