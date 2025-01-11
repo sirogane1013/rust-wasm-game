@@ -133,11 +133,15 @@ impl RedHatBoyStateMachine {
             (RedHatBoyStateMachine::Jumping(_), Event::Slide) => self,
             (RedHatBoyStateMachine::Jumping(_), Event::Jump) => self,
             (RedHatBoyStateMachine::Jumping(state), Event::KnockOut) => state.knock_out().into(),
+            (RedHatBoyStateMachine::Falling(_), Event::Run) => self,
+            (RedHatBoyStateMachine::Falling(_), Event::Slide) => self,
+            (RedHatBoyStateMachine::Falling(_), Event::Jump) => self,
+            (RedHatBoyStateMachine::Falling(_), Event::KnockOut) => self,
             (RedHatBoyStateMachine::Idle(state), Event::Update) => state.update().into(),
             (RedHatBoyStateMachine::Running(state), Event::Update) => state.update().into(),
             (RedHatBoyStateMachine::Sliding(state), Event::Update) => state.update().into(),
             (RedHatBoyStateMachine::Jumping(state), Event::Update) => state.update().into(),
-            _ => self,
+            (RedHatBoyStateMachine::Falling(state), Event::Update) => state.update().into(),
         }
     }
 
@@ -353,7 +357,7 @@ mod red_hat_boy_states {
 
         pub fn knock_out(self) -> RedHatBoyState<Falling> {
             RedHatBoyState {
-                context: self.context,
+                context: self.context.reset_frame(),
                 _state: Falling {},
             }
         }
@@ -383,7 +387,7 @@ mod red_hat_boy_states {
 
         pub fn knock_out(self) -> RedHatBoyState<Falling> {
             RedHatBoyState {
-                context: self.context,
+                context: self.context.reset_frame(),
                 _state: Falling {},
             }
         }
@@ -418,7 +422,7 @@ mod red_hat_boy_states {
 
         pub fn knock_out(self) -> RedHatBoyState<Falling> {
             RedHatBoyState {
-                context: self.context,
+                context: self.context.reset_frame(),
                 _state: Falling {},
             }
         }
@@ -483,7 +487,7 @@ impl Game for WalkTheDog {
 
             walk.boy.update();
 
-            if walk.boy.bounding_box().interests(walk.boy.bounding_box()) {
+            if walk.boy.bounding_box().interests(walk.stone.bounding_box()) {
                 walk.boy.knock_out();
             }
         }

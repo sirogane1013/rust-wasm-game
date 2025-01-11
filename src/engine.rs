@@ -143,8 +143,11 @@ pub struct Rect {
 }
 
 impl Rect {
-    pub fn interests(&self, other: Rect) -> bool {
-        false
+    pub fn interests(&self, rect: &Rect) -> bool {
+        self.x < (rect.x + rect.w)
+            && self.x + self.w > rect.x
+            && self.y < (rect.y + rect.h)
+            && self.y + self.h > rect.y
     }
 }
 
