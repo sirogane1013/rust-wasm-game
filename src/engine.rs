@@ -142,6 +142,12 @@ pub struct Rect {
     pub h: f32,
 }
 
+impl Rect {
+    pub fn interests(&self, other: Rect) -> bool {
+        false
+    }
+}
+
 impl Renderer {
     pub fn clear(&self, rect: &Rect) {
         self.context
