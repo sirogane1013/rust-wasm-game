@@ -1,4 +1,4 @@
-use crate::engine::{Game, Image, KeyState, Point, Rect, Renderer, Sheet};
+use crate::engine::{Cell, Game, Image, KeyState, Point, Rect, Renderer, Sheet};
 use crate::game::red_hat_boy_states::*;
 use crate::{browser, engine};
 use anyhow::{anyhow, Result};
@@ -32,21 +32,35 @@ impl RedHatBoy {
         }
     }
 
+    fn frame_name(&self) -> String {
+        format!(
+            "{} ({}).png",
+            self.state_machine.frame_name(),
+            (self.state_machine.context().frame / 3) + 1,
+        )
+    }
+
+    fn current_sprite(&self) -> Option<&Cell> {
+        self.sprite_sheet.frames.get(&self.frame_name())
+    }
+
+    fn bounding_box(&self) -> Rect {
+        let sprite = self.current_sprite().expect("Cell not found");
+
+        Rect::new(
+            (self.state_machine.context().position.x + sprite.sprite_source_size.x).into(),
+            (self.state_machine.context().position.y + sprite.sprite_source_size.y).into(),
+            sprite.frame.w.into(),
+            sprite.frame.h.into(),
+        )
+    }
+
     fn update(&mut self) {
         self.state_machine = self.state_machine.update()
     }
 
     fn draw(&self, renderer: &Renderer) {
-        let frame_name = format!(
-            "{} ({}).png",
-            self.state_machine.frame_name(),
-            (self.state_machine.context().frame / 3) + 1,
-        );
-        let sprite = self
-            .sprite_sheet
-            .frames
-            .get(&frame_name)
-            .expect("Cell not found");
+        let sprite = self.current_sprite().expect("Cell not found");
 
         renderer
             .draw_image(
@@ -57,35 +71,13 @@ impl RedHatBoy {
                     w: sprite.frame.w.into(),
                     h: sprite.frame.h.into(),
                 },
-                &Rect {
-                    x: (self.state_machine.context().position.x + sprite.sprite_source_size.x).into(),
-                    y: (self.state_machine.context().position.y + sprite.sprite_source_size.y).into(),
-                    w: sprite.frame.w.into(),
-                    h: sprite.frame.h.into(),
-                },
+                &self.bounding_box(),
             )
             .expect("failed to draw image");
     }
 
     fn draw_bounding_box(&self, renderer: &Renderer) {
-        let frame_name = format!(
-            "{} ({}).png",
-            self.state_machine.frame_name(),
-            (self.state_machine.context().frame / 3) + 1,
-        );
-        let sprite = self
-            .sprite_sheet
-            .frames
-            .get(&frame_name)
-            .expect("Cell not found");
-        let bounding_box = Rect::new(
-            (self.state_machine.context().position.x + sprite.sprite_source_size.x).into(),
-            (self.state_machine.context().position.y + sprite.sprite_source_size.y).into(),
-            sprite.frame.w.into(),
-            sprite.frame.h.into(),
-        );
-
-        renderer.draw_rect(&bounding_box)
+        renderer.draw_rect(&self.bounding_box())
     }
 
     fn run_right(&mut self) {
@@ -294,7 +286,10 @@ mod red_hat_boy_states {
             RedHatBoyState {
                 context: RedHatBoyContext {
                     frame: 0,
-                    position: Point { x: STARTING_POINT, y: FLOOR },
+                    position: Point {
+                        x: STARTING_POINT,
+                        y: FLOOR,
+                    },
                     velocity: Point { x: 0, y: 0 },
                 },
                 _state: Idle,
