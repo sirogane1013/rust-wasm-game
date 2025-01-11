@@ -58,8 +58,8 @@ impl RedHatBoy {
                     h: sprite.frame.h.into(),
                 },
                 &Rect {
-                    x: self.state_machine.context().position.x.into(),
-                    y: self.state_machine.context().position.y.into(),
+                    x: (self.state_machine.context().position.x + sprite.sprite_source_size.x).into(),
+                    y: (self.state_machine.context().position.y + sprite.sprite_source_size.y).into(),
                     w: sprite.frame.w.into(),
                     h: sprite.frame.h.into(),
                 },
@@ -79,8 +79,8 @@ impl RedHatBoy {
             .get(&frame_name)
             .expect("Cell not found");
         let bounding_box = Rect::new(
-            self.state_machine.context().position.x.into(),
-            self.state_machine.context().position.y.into(),
+            (self.state_machine.context().position.x + sprite.sprite_source_size.x).into(),
+            (self.state_machine.context().position.y + sprite.sprite_source_size.y).into(),
             sprite.frame.w.into(),
             sprite.frame.h.into(),
         );
