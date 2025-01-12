@@ -15,6 +15,7 @@ pub struct Walk {
     boy: RedHatBoy,
     background: Image,
     stone: Image,
+    platform: Platform,
 }
 
 struct RedHatBoy {
@@ -73,7 +74,7 @@ impl RedHatBoy {
                 },
                 &self.bounding_box(),
             )
-            .expect("failed to draw image");
+            .expect("failed to draw rhb");
     }
 
     fn draw_bounding_box(&self, renderer: &Renderer) {
@@ -94,6 +95,58 @@ impl RedHatBoy {
 
     fn knock_out(&mut self) {
         self.state_machine = self.state_machine.transition(Event::KnockOut)
+    }
+}
+
+struct Platform {
+    sheet: Sheet,
+    image: HtmlImageElement,
+    position: Point,
+}
+
+impl Platform {
+    fn new(sheet: Sheet, image: HtmlImageElement, position: Point) -> Self {
+        Platform {
+            sheet,
+            image,
+            position,
+        }
+    }
+
+    fn bounding_box(&self) -> Rect {
+        let platform = self
+            .sheet
+            .frames
+            .get("13.png")
+            .expect("13.png does not exist");
+
+        Rect {
+            x: self.position.x.into(),
+            y: self.position.y.into(),
+            w: (platform.frame.w * 3).into(),
+            h: platform.frame.h.into(),
+        }
+    }
+
+    fn draw(&self, renderer: &Renderer) {
+        let platform = self
+            .sheet
+            .frames
+            .get("13.png")
+            .expect("13.png does not exist");
+
+        renderer
+            .draw_image(
+                &self.image,
+                &Rect {
+                    x: platform.frame.x.into(),
+                    y: platform.frame.y.into(),
+                    w: (platform.frame.w * 3).into(),
+                    h: platform.frame.h.into(),
+                },
+                &self.bounding_box(),
+            )
+            .expect("failed to draw platform");
     }
 }
 
@@ -509,15 +562,23 @@ impl Game for WalkTheDog {
     async fn initialize(&self) -> Result<Box<dyn Game>> {
         match self {
             WalkTheDog::Loading => {
-                let json = browser::fetch_json("rhb.json").await?;
-                let rhb = RedHatBoy::new(json.into_serde()?, engine::load_image("rhb.png").await?);
+                let rhb = RedHatBoy::new(
+                    browser::fetch_json("rhb.json").await?.into_serde()?,
+                    engine::load_image("rhb.png").await?,
+                );
                 let background = engine::load_image("BG.png").await?;
                 let stone = engine::load_image("Stone.png").await?;
+                let platform = Platform::new(
+                    browser::fetch_json("tiles.json").await?.into_serde()?,
+                    engine::load_image("tiles.png").await?,
+                    Point { x: 200, y: 400 },
+                );
 
                 Ok(Box::new(WalkTheDog::Loaded(Walk {
                     boy: rhb,
                     background: Image::new(background, Point { x: 0, y: 0 }),
                     stone: Image::new(stone, Point { x: 150, y: 546 }),
+                    platform,
                 })))
             }
             WalkTheDog::Loaded(_) => Err(anyhow!("Error: Game is already initialized!")),
@@ -562,6 +623,7 @@ impl Game for WalkTheDog {
             walk.boy.draw_bounding_box(renderer);
             walk.stone.draw(renderer).expect("Failed to draw stone.");
             walk.stone.draw_bounding_box(renderer);
+            walk.platform.draw(renderer);
         }
     }
 }
