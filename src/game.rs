@@ -104,6 +104,7 @@ enum RedHatBoyStateMachine {
     Sliding(RedHatBoyState<Sliding>),
     Jumping(RedHatBoyState<Jumping>),
     Falling(RedHatBoyState<Falling>),
+    KnockedOut(RedHatBoyState<KnockedOut>),
 }
 
 pub enum Event {
@@ -137,11 +138,16 @@ impl RedHatBoyStateMachine {
             (RedHatBoyStateMachine::Falling(_), Event::Slide) => self,
             (RedHatBoyStateMachine::Falling(_), Event::Jump) => self,
             (RedHatBoyStateMachine::Falling(_), Event::KnockOut) => self,
+            (RedHatBoyStateMachine::KnockedOut(_), Event::Run) => self,
+            (RedHatBoyStateMachine::KnockedOut(_), Event::Slide) => self,
+            (RedHatBoyStateMachine::KnockedOut(_), Event::Jump) => self,
+            (RedHatBoyStateMachine::KnockedOut(_), Event::KnockOut) => self,
             (RedHatBoyStateMachine::Idle(state), Event::Update) => state.update().into(),
             (RedHatBoyStateMachine::Running(state), Event::Update) => state.update().into(),
             (RedHatBoyStateMachine::Sliding(state), Event::Update) => state.update().into(),
             (RedHatBoyStateMachine::Jumping(state), Event::Update) => state.update().into(),
             (RedHatBoyStateMachine::Falling(state), Event::Update) => state.update().into(),
+            (RedHatBoyStateMachine::KnockedOut(_), Event::Update) => self,
         }
     }
 
@@ -156,6 +162,7 @@ impl RedHatBoyStateMachine {
             RedHatBoyStateMachine::Sliding(state) => state.frame_name(),
             RedHatBoyStateMachine::Jumping(state) => state.frame_name(),
             RedHatBoyStateMachine::Falling(state) => state.frame_name(),
+            RedHatBoyStateMachine::KnockedOut(state) => state.frame_name(),
         }
     }
 
@@ -166,6 +173,7 @@ impl RedHatBoyStateMachine {
             RedHatBoyStateMachine::Sliding(state) => &state.context(),
             RedHatBoyStateMachine::Jumping(state) => &state.context(),
             RedHatBoyStateMachine::Falling(state) => &state.context(),
+            RedHatBoyStateMachine::KnockedOut(state) => state.context(),
         }
     }
 }
@@ -215,6 +223,21 @@ impl From<JumpingEndState> for RedHatBoyStateMachine {
 impl From<RedHatBoyState<Falling>> for RedHatBoyStateMachine {
     fn from(state: RedHatBoyState<Falling>) -> Self {
         RedHatBoyStateMachine::Falling(state)
+    }
+}
+
+impl From<FallingEndState> for RedHatBoyStateMachine {
+    fn from(end_state: FallingEndState) -> Self {
+        match end_state {
+            FallingEndState::Complete(knocked_out_state) => knocked_out_state.into(),
+            FallingEndState::Falling(falling_state) => falling_state.into(),
+        }
+    }
+}
+
+impl From<RedHatBoyState<KnockedOut>> for RedHatBoyStateMachine {
+    fn from(state: RedHatBoyState<KnockedOut>) -> Self {
+        RedHatBoyStateMachine::KnockedOut(state)
     }
 }
 
@@ -297,6 +320,8 @@ mod red_hat_boy_states {
     pub struct Jumping;
     #[derive(Copy, Clone)]
     pub struct Falling;
+    #[derive(Copy, Clone)]
+    pub struct KnockedOut;
 
     impl<S> RedHatBoyState<S> {
         pub fn context(&self) -> &RedHatBoyContext {
@@ -439,11 +464,34 @@ mod red_hat_boy_states {
     }
 
     impl RedHatBoyState<Falling> {
-        pub fn update(mut self) -> Self {
+        pub fn update(mut self) -> FallingEndState {
             self.context = self.context.update(FALLING_FRAMES);
-            self
+
+            if self.context.frame >= FALLING_FRAMES {
+                FallingEndState::Complete(self.knocked_out())
+            } else {
+                FallingEndState::Falling(self)
+            }
         }
 
+        pub fn frame_name(&self) -> &str {
+            FALLING_FRAME_NAME
+        }
+
+        fn knocked_out(self) -> RedHatBoyState<KnockedOut> {
+            RedHatBoyState {
+                context: self.context,
+                _state: KnockedOut {},
+            }
+        }
+    }
+
+    pub enum FallingEndState {
+        Complete(RedHatBoyState<KnockedOut>),
+        Falling(RedHatBoyState<Falling>),
+    }
+
+    impl RedHatBoyState<KnockedOut> {
         pub fn frame_name(&self) -> &str {
             FALLING_FRAME_NAME
         }
