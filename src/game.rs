@@ -485,7 +485,7 @@ mod red_hat_boy_states {
         pub fn update(mut self) -> JumpingEndState {
             self.context = self.context.update(JUMPING_FRAMES);
 
-            if self.context.frame >= JUMPING_FRAMES {
+            if self.context.position.y >= FLOOR {
                 JumpingEndState::Complete(self.land())
             } else {
                 JumpingEndState::Jumping(self)
