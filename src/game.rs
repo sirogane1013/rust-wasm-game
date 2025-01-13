@@ -654,6 +654,9 @@ impl WalkTheDog {
     }
 }
 
+const LOW_PLATFORM: i16 = 420;
+const HIGH_PLATFORM: i16 = 375;
+const FIRST_PLATFORM: i16 = 370;
 #[async_trait(?Send)]
 impl Game for WalkTheDog {
     async fn initialize(&self) -> Result<Box<dyn Game>> {
@@ -668,7 +671,10 @@ impl Game for WalkTheDog {
                 let platform = Platform::new(
                     browser::fetch_json("tiles.json").await?.into_serde()?,
                     engine::load_image("tiles.png").await?,
-                    Point { x: 200, y: 400 },
+                    Point {
+                        x: FIRST_PLATFORM,
+                        y: LOW_PLATFORM,
+                    },
                 );
 
                 Ok(Box::new(WalkTheDog::Loaded(Walk {
@@ -707,9 +713,9 @@ impl Game for WalkTheDog {
                     }
                 }
             }
-            // if walk.boy.bounding_box().interests(walk.stone.bounding_box()) {
-            //     walk.boy.knock_out();
-            // }
+            if walk.boy.bounding_box().interests(walk.stone.bounding_box()) {
+                walk.boy.knock_out();
+            }
         }
     }
 
