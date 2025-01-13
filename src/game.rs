@@ -20,6 +20,12 @@ pub struct Walk {
     platform: Platform,
 }
 
+impl Walk {
+    fn velocity(&self) -> i16 {
+        -self.boy.walk_speed()
+    }
+}
+
 struct RedHatBoy {
     state_machine: RedHatBoyStateMachine,
     sprite_sheet: Sheet,
@@ -53,6 +59,10 @@ impl RedHatBoy {
 
     fn velocity_y(&self) -> i16 {
         self.state_machine.context().velocity.y
+    }
+
+    fn walk_speed(&self) -> i16 {
+        self.state_machine.context().velocity.x
     }
 
     fn destination_box(&self) -> Rect {
@@ -410,7 +420,6 @@ mod red_hat_boy_states {
             } else {
                 self.frame = 0;
             }
-            self.position.x += self.velocity.x;
             self.position.y += self.velocity.y;
             if self.position.y > FLOOR {
                 self.position.y = FLOOR
@@ -704,6 +713,10 @@ impl Game for WalkTheDog {
             }
 
             walk.boy.update();
+
+            walk.platform.position.x += walk.velocity();
+            walk.stone.move_horizontally(walk.velocity());
+            walk.background.move_horizontally(walk.velocity());
 
             for bounding_box in &walk.platform.bounding_boxes() {
                 if walk.boy.bounding_box().interests(bounding_box) {

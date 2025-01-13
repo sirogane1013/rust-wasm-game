@@ -73,6 +73,13 @@ pub struct Image {
     bounding_box: Rect,
 }
 
+impl Image {
+    pub fn move_horizontally(&mut self, distance: i16) {
+        self.bounding_box.x += distance as f32;
+        self.point.x += distance;
+    }
+}
+
 impl KeyState {
     fn new() -> Self {
         KeyState {
