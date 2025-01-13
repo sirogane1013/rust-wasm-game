@@ -47,6 +47,14 @@ impl RedHatBoy {
         self.sprite_sheet.frames.get(&self.frame_name())
     }
 
+    fn pos_y(&self) -> i16 {
+        self.state_machine.context().position.y
+    }
+
+    fn velocity_y(&self) -> i16 {
+        self.state_machine.context().velocity.y
+    }
+
     fn bounding_box(&self) -> Rect {
         let sprite = self.current_sprite().expect("Cell not found");
 
@@ -654,7 +662,12 @@ impl Game for WalkTheDog {
                 .bounding_box()
                 .interests(&walk.platform.bounding_box())
             {
-                walk.boy.land_on(walk.platform.bounding_box().y);
+                if walk.boy.velocity_y() > 0 &&
+                    walk.boy.pos_y() < walk.platform.position.y {
+                    walk.boy.land_on(walk.platform.bounding_box().y);
+                } else {
+                    walk.boy.knock_out();
+                }
             }
             if walk.boy.bounding_box().interests(walk.stone.bounding_box()) {
                 walk.boy.knock_out();
