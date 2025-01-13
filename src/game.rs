@@ -139,7 +139,7 @@ impl Platform {
         }
     }
 
-    fn bounding_box(&self) -> Rect {
+    fn destination_box(&self) -> Rect {
         let platform = self
             .sheet
             .frames
@@ -152,6 +152,32 @@ impl Platform {
             w: (platform.frame.w * 3).into(),
             h: platform.frame.h.into(),
         }
+    }
+
+    fn bounding_boxes(&self) -> Vec<Rect> {
+        const X_OFFSET: f32 = 60.0;
+        const END_HEIGHT: f32 = 54.0;
+        let destination_box = self.destination_box();
+        let bounding_box_one = Rect {
+            x: destination_box.x,
+            y: destination_box.y,
+            w: X_OFFSET,
+            h: END_HEIGHT,
+        };
+        let bounding_box_two = Rect {
+            x: destination_box.x + X_OFFSET,
+            y: destination_box.y,
+            w: destination_box.w - (X_OFFSET * 2.0),
+            h: destination_box.h,
+        };
+        let bounding_box_three = Rect {
+            x: destination_box.x + X_OFFSET + destination_box.w - (X_OFFSET * 2.0),
+            y: destination_box.y,
+            w: X_OFFSET,
+            h: END_HEIGHT,
+        };
+
+        vec![bounding_box_one, bounding_box_two, bounding_box_three]
     }
 
     fn draw(&self, renderer: &Renderer) {
@@ -170,13 +196,15 @@ impl Platform {
                     w: (platform.frame.w * 3).into(),
                     h: platform.frame.h.into(),
                 },
-                &self.bounding_box(),
+                &self.destination_box(),
             )
             .expect("failed to draw platform");
     }
 
     fn draw_bounding_box(&self, renderer: &Renderer) {
-        renderer.draw_rect(&self.bounding_box())
+        self.bounding_boxes()
+            .iter()
+            .for_each(|bounding_box| renderer.draw_rect(bounding_box));
     }
 }
 
@@ -669,21 +697,19 @@ impl Game for WalkTheDog {
             }
 
             walk.boy.update();
-            if walk
-                .boy
-                .bounding_box()
-                .interests(&walk.platform.bounding_box())
-            {
-                if walk.boy.velocity_y() > 0 &&
-                    walk.boy.pos_y() < walk.platform.position.y {
-                    walk.boy.land_on(walk.platform.bounding_box().y);
-                } else {
-                    walk.boy.knock_out();
+
+            for bounding_box in &walk.platform.bounding_boxes() {
+                if walk.boy.bounding_box().interests(bounding_box) {
+                    if walk.boy.velocity_y() > 0 && walk.boy.pos_y() < walk.platform.position.y {
+                        walk.boy.land_on(bounding_box.y);
+                    } else {
+                        walk.boy.knock_out();
+                    }
                 }
             }
-            if walk.boy.bounding_box().interests(walk.stone.bounding_box()) {
-                walk.boy.knock_out();
-            }
+            // if walk.boy.bounding_box().interests(walk.stone.bounding_box()) {
+            //     walk.boy.knock_out();
+            // }
         }
     }
 
