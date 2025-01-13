@@ -55,7 +55,7 @@ impl RedHatBoy {
         self.state_machine.context().velocity.y
     }
 
-    fn bounding_box(&self) -> Rect {
+    fn destination_box(&self) -> Rect {
         let sprite = self.current_sprite().expect("Cell not found");
 
         Rect::new(
@@ -64,6 +64,18 @@ impl RedHatBoy {
             sprite.frame.w.into(),
             sprite.frame.h.into(),
         )
+    }
+
+    fn bounding_box(&self) -> Rect {
+        const X_OFFSET: f32 = 18.0;
+        const Y_OFFSET: f32 = 14.0;
+        const WIDTH_OFFSET: f32 = 28.0;
+        let mut bounding_box = self.destination_box();
+        bounding_box.x += X_OFFSET;
+        bounding_box.y += Y_OFFSET;
+        bounding_box.w -= WIDTH_OFFSET;
+        bounding_box.h -= Y_OFFSET;
+        bounding_box
     }
 
     fn update(&mut self) {
@@ -82,13 +94,13 @@ impl RedHatBoy {
                     w: sprite.frame.w.into(),
                     h: sprite.frame.h.into(),
                 },
-                &self.bounding_box(),
+                &self.destination_box(),
             )
             .expect("failed to draw rhb");
     }
 
     fn draw_bounding_box(&self, renderer: &Renderer) {
-        renderer.draw_rect(&self.bounding_box())
+        renderer.draw_rect(&self.bounding_box());
     }
 
     fn run_right(&mut self) {
