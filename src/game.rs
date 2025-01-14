@@ -81,10 +81,10 @@ impl RedHatBoy {
         const Y_OFFSET: f32 = 14.0;
         const WIDTH_OFFSET: f32 = 28.0;
         let mut bounding_box = self.destination_box();
-        bounding_box.x += X_OFFSET;
-        bounding_box.y += Y_OFFSET;
-        bounding_box.w -= WIDTH_OFFSET;
-        bounding_box.h -= Y_OFFSET;
+        bounding_box.x += X_OFFSET as i16;
+        bounding_box.y += Y_OFFSET as i16;
+        bounding_box.w -= WIDTH_OFFSET as i16;
+        bounding_box.h -= Y_OFFSET as i16;
         bounding_box
     }
 
@@ -125,7 +125,7 @@ impl RedHatBoy {
         self.state_machine = self.state_machine.transition(Event::Jump)
     }
 
-    fn land_on(&mut self, position: f32) {
+    fn land_on(&mut self, position: i16) {
         self.state_machine = self.state_machine.transition(Event::Land(position))
     }
 
@@ -171,20 +171,20 @@ impl Platform {
         let bounding_box_one = Rect {
             x: destination_box.x,
             y: destination_box.y,
-            w: X_OFFSET,
-            h: END_HEIGHT,
+            w: X_OFFSET as i16,
+            h: END_HEIGHT as i16,
         };
         let bounding_box_two = Rect {
-            x: destination_box.x + X_OFFSET,
+            x: destination_box.x + X_OFFSET as i16,
             y: destination_box.y,
-            w: destination_box.w - (X_OFFSET * 2.0),
+            w: destination_box.w - (X_OFFSET * 2.0) as i16,
             h: destination_box.h,
         };
         let bounding_box_three = Rect {
-            x: destination_box.x + X_OFFSET + destination_box.w - (X_OFFSET * 2.0),
+            x: destination_box.x + destination_box.w - X_OFFSET as i16,
             y: destination_box.y,
-            w: X_OFFSET,
-            h: END_HEIGHT,
+            w: X_OFFSET as i16,
+            h: END_HEIGHT as i16,
         };
 
         vec![bounding_box_one, bounding_box_two, bounding_box_three]
@@ -232,7 +232,7 @@ pub enum Event {
     Run,
     Slide,
     Jump,
-    Land(f32),
+    Land(i16),
     KnockOut,
     Update,
 }
@@ -531,9 +531,9 @@ mod red_hat_boy_states {
             }
         }
 
-        pub fn land_on(self, position: f32) -> RedHatBoyState<Running> {
+        pub fn land_on(self, position: i16) -> RedHatBoyState<Running> {
             RedHatBoyState {
-                context: self.context.set_on(position as i16),
+                context: self.context.set_on(position),
                 _state: Running {},
             }
         }
@@ -568,9 +568,9 @@ mod red_hat_boy_states {
             }
         }
 
-        pub fn land_on(mut self, position: f32) -> RedHatBoyState<Sliding> {
+        pub fn land_on(mut self, position: i16) -> RedHatBoyState<Sliding> {
             RedHatBoyState {
-                context: self.context.set_on(position as i16),
+                context: self.context.set_on(position),
                 _state: Sliding {},
             }
         }
@@ -603,9 +603,9 @@ mod red_hat_boy_states {
             JUMPING_FRAME_NAME
         }
 
-        pub fn land_on(mut self, position: f32) -> RedHatBoyState<Running> {
+        pub fn land_on(mut self, position: i16) -> RedHatBoyState<Running> {
             RedHatBoyState {
-                context: self.context.set_on(position as i16),
+                context: self.context.set_on(position),
                 _state: Running {},
             }
         }
@@ -755,10 +755,10 @@ impl Game for WalkTheDog {
 
     fn draw(&self, renderer: &Renderer) {
         renderer.clear(&Rect {
-            x: 0.0,
-            y: 0.0,
-            w: HEIGHT as f32,
-            h: HEIGHT as f32,
+            x: 0,
+            y: 0,
+            w: HEIGHT,
+            h: HEIGHT,
         });
 
         if let WalkTheDog::Loaded(walk) = self {

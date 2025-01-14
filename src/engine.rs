@@ -75,16 +75,16 @@ pub struct Image {
 
 impl Image {
     pub fn right(&self) -> i16 {
-        (self.bounding_box.x + self.bounding_box.w) as i16
+        (self.bounding_box.x + self.bounding_box.w)
     }
 
     pub fn move_horizontally(&mut self, distance: i16) {
-        self.bounding_box.x += distance as f32;
+        self.bounding_box.x += distance;
         self.point.x += distance;
     }
 
     pub fn set_x(&mut self, x: i16) {
-        self.bounding_box.x = x as f32;
+        self.bounding_box.x = x;
         self.point.x = x;
     }
 }
@@ -152,10 +152,10 @@ impl GameLoop {
 }
 
 pub struct Rect {
-    pub x: f32,
-    pub y: f32,
-    pub w: f32,
-    pub h: f32,
+    pub x: i16,
+    pub y: i16,
+    pub w: i16,
+    pub h: i16,
 }
 
 impl Rect {
@@ -218,8 +218,8 @@ impl Image {
         let bounding_box = Rect {
             x: point.x.into(),
             y: point.y.into(),
-            w: element.width() as f32,
-            h: element.height() as f32,
+            w: element.width() as i16,
+            h: element.height() as i16,
         };
         Self {
             element,
@@ -242,7 +242,7 @@ impl Image {
 }
 
 impl Rect {
-    pub fn new(x: f32, y: f32, w: f32, h: f32) -> Self {
+    pub fn new(x: i16, y: i16, w: i16, h: i16) -> Self {
         Self { x, y, w, h }
     }
 }
