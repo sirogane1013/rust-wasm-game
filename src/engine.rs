@@ -75,7 +75,7 @@ pub struct Image {
 
 impl Image {
     pub fn right(&self) -> i16 {
-        (self.bounding_box.x + self.bounding_box.w)
+        self.bounding_box.x + self.bounding_box.w
     }
 
     pub fn move_horizontally(&mut self, distance: i16) {
