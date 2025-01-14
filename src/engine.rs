@@ -74,17 +74,38 @@ pub struct Image {
 }
 
 impl Image {
+    pub fn new(element: HtmlImageElement, point: Point) -> Self {
+        let bounding_box = Rect::new(point, element.width() as i16, element.height() as i16);
+        Self {
+            element,
+            point,
+            bounding_box,
+        }
+    }
+
+    pub fn bounding_box(&self) -> &Rect {
+        &self.bounding_box
+    }
+
+    pub fn draw(&self, renderer: &Renderer) -> Result<()> {
+        renderer.draw_entire_image(&self.element, self.point)
+    }
+
+    pub fn draw_bounding_box(&self, renderer: &Renderer) {
+        renderer.draw_rect(&self.bounding_box)
+    }
+
     pub fn right(&self) -> i16 {
         self.bounding_box.right()
     }
 
     pub fn move_horizontally(&mut self, distance: i16) {
-        self.bounding_box.x += distance;
+        self.bounding_box.set_x(self.bounding_box().x() + distance);
         self.point.x += distance;
     }
 
     pub fn set_x(&mut self, x: i16) {
-        self.bounding_box.x = x;
+        self.bounding_box.set_x(x);
         self.point.x = x;
     }
 }
@@ -152,33 +173,60 @@ impl GameLoop {
 }
 
 pub struct Rect {
-    pub x: i16,
-    pub y: i16,
+    pub position: Point,
     pub w: i16,
     pub h: i16,
 }
 
 impl Rect {
+    pub fn new(position: Point, w: i16, h: i16) -> Self {
+        Rect { position, w, h }
+    }
+
+    pub fn new_from_x_y(x: i16, y: i16, w: i16, h: i16) -> Self {
+        Rect::new(Point { x, y }, w, h)
+    }
+
+    pub fn x(&self) -> i16 {
+        self.position.x
+    }
+
+    pub fn set_x(&mut self, x: i16) {
+        self.position.x = x;
+    }
+
+    pub fn y(&self) -> i16 {
+        self.position.y
+    }
+
+    pub fn set_y(&mut self, y: i16) {
+        self.position.y = y;
+    }
+
     pub fn interests(&self, rect: &Rect) -> bool {
-        self.x < rect.right()
-            && self.right() > rect.x
-            && self.y < rect.bottom()
-            && self.bottom() > rect.y
+        self.x() < rect.right()
+            && self.right() > rect.x()
+            && self.y() < rect.bottom()
+            && self.bottom() > rect.y()
     }
 
     pub fn right(&self) -> i16 {
-        self.x + self.w
+        self.x() + self.w
     }
 
     pub fn bottom(&self) -> i16 {
-        self.y + self.h
+        self.y() + self.h
     }
 }
 
 impl Renderer {
     pub fn clear(&self, rect: &Rect) {
-        self.context
-            .clear_rect(rect.x.into(), rect.y.into(), rect.w.into(), rect.h.into())
+        self.context.clear_rect(
+            rect.x().into(),
+            rect.y().into(),
+            rect.w.into(),
+            rect.h.into(),
+        )
     }
 
     pub fn draw_entire_image(&self, image: &HtmlImageElement, position: Point) -> Result<()> {
@@ -196,12 +244,12 @@ impl Renderer {
         self.context
             .draw_image_with_html_image_element_and_sw_and_sh_and_dx_and_dy_and_dw_and_dh(
                 &image,
-                frame.x.into(),
-                frame.y.into(),
+                frame.x().into(),
+                frame.y().into(),
                 frame.w.into(),
                 frame.h.into(),
-                destination.x.into(),
-                destination.y.into(),
+                destination.x().into(),
+                destination.y().into(),
                 destination.w.into(),
                 destination.h.into(),
             )
@@ -212,46 +260,12 @@ impl Renderer {
         self.context.set_stroke_style(&JsValue::from_str("#FF0000"));
         self.context.begin_path();
         self.context.rect(
-            bounding_box.x.into(),
-            bounding_box.y.into(),
+            bounding_box.x().into(),
+            bounding_box.y().into(),
             bounding_box.w.into(),
             bounding_box.h.into(),
         );
         self.context.stroke();
-    }
-}
-
-impl Image {
-    pub fn new(element: HtmlImageElement, point: Point) -> Self {
-        let bounding_box = Rect {
-            x: point.x.into(),
-            y: point.y.into(),
-            w: element.width() as i16,
-            h: element.height() as i16,
-        };
-        Self {
-            element,
-            point,
-            bounding_box,
-        }
-    }
-
-    pub fn bounding_box(&self) -> &Rect {
-        &self.bounding_box
-    }
-
-    pub fn draw(&self, renderer: &Renderer) -> Result<()> {
-        renderer.draw_entire_image(&self.element, self.point)
-    }
-
-    pub fn draw_bounding_box(&self, renderer: &Renderer) {
-        renderer.draw_rect(&self.bounding_box)
-    }
-}
-
-impl Rect {
-    pub fn new(x: i16, y: i16, w: i16, h: i16) -> Self {
-        Self { x, y, w, h }
     }
 }
 
