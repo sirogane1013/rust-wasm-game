@@ -75,7 +75,7 @@ pub struct Image {
 
 impl Image {
     pub fn right(&self) -> i16 {
-        self.bounding_box.x + self.bounding_box.w
+        self.bounding_box.right()
     }
 
     pub fn move_horizontally(&mut self, distance: i16) {
@@ -160,10 +160,18 @@ pub struct Rect {
 
 impl Rect {
     pub fn interests(&self, rect: &Rect) -> bool {
-        self.x < (rect.x + rect.w)
-            && self.x + self.w > rect.x
-            && self.y < (rect.y + rect.h)
-            && self.y + self.h > rect.y
+        self.x < rect.right()
+            && self.right() > rect.x
+            && self.y < rect.bottom()
+            && self.bottom() > rect.y
+    }
+
+    pub fn right(&self) -> i16 {
+        self.x + self.w
+    }
+
+    pub fn bottom(&self) -> i16 {
+        self.y + self.h
     }
 }
 
