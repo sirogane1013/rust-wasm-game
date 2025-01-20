@@ -134,6 +134,7 @@ impl RedHatBoy {
 }
 
 pub trait Obstacle {
+    fn right(&self) -> i16;
     fn check_intersection(&self, boy: &mut RedHatBoy);
     fn draw(&self, renderer: &Renderer);
     fn move_horizontally(&mut self, x: i16);
@@ -198,6 +199,10 @@ impl Platform {
 }
 
 impl Obstacle for Platform {
+    fn right(&self) -> i16 {
+        self.bounding_boxes().last().unwrap_or(&Rect::default()).right()
+    }
+
     fn check_intersection(&self, boy: &mut RedHatBoy) {
         if let Some(box_to_land_on) = self
             .bounding_boxes()
@@ -255,6 +260,10 @@ impl Barrier {
 }
 
 impl Obstacle for Barrier {
+    fn right(&self) -> i16 {
+        self.image.right()
+    }
+
     fn check_intersection(&self, boy: &mut RedHatBoy) {
         if boy.bounding_box().interests(self.image.bounding_box()) {
             boy.knock_out();
@@ -793,6 +802,8 @@ impl Game for WalkTheDog {
             if second_background.right() < 0 {
                 second_background.set_x(first_background.right())
             }
+
+            walk.obstacles.retain(|obstacle| obstacle.right() > 0);
 
             walk.obstacles.iter_mut().for_each(|obstacle| {
                 obstacle.move_horizontally(velocity);

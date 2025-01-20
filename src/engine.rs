@@ -61,7 +61,7 @@ pub struct KeyState {
     pressed_keys: HashMap<String, web_sys::KeyboardEvent>,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Default)]
 pub struct Point {
     pub x: i16,
     pub y: i16,
@@ -168,6 +168,7 @@ impl GameLoop {
     }
 }
 
+#[derive(Default)]
 pub struct Rect {
     pub position: Point,
     pub w: i16,
