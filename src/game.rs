@@ -1,9 +1,10 @@
-use crate::engine::{Cell, Game, Image, KeyState, Point, Rect, Renderer, Sheet};
+use crate::engine::{Cell, Game, Image, KeyState, Point, Rect, Renderer, Sheet, SpriteSheet};
 use crate::game::red_hat_boy_states::*;
 use crate::{browser, engine};
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use serde::Deserialize;
+use std::rc::Rc;
 use web_sys::HtmlImageElement;
 
 const HEIGHT: i16 = 600;
@@ -14,6 +15,7 @@ pub enum WalkTheDog {
 }
 
 pub struct Walk {
+    obstacle_sheet: Rc<SpriteSheet>,
     boy: RedHatBoy,
     backgrounds: [Image; 2],
     obstacles: Vec<Box<dyn Obstacle>>,
@@ -142,26 +144,17 @@ pub trait Obstacle {
 }
 
 struct Platform {
-    sheet: Sheet,
-    image: HtmlImageElement,
+    sheet: Rc<SpriteSheet>,
     position: Point,
 }
 
 impl Platform {
-    fn new(sheet: Sheet, image: HtmlImageElement, position: Point) -> Self {
-        Platform {
-            sheet,
-            image,
-            position,
-        }
+    fn new(sheet: Rc<SpriteSheet>, position: Point) -> Self {
+        Platform { sheet, position }
     }
 
     fn destination_box(&self) -> Rect {
-        let platform = self
-            .sheet
-            .frames
-            .get("13.png")
-            .expect("13.png does not exist");
+        let platform = self.sheet.cell("13.png").expect("13.png does not exist");
 
         Rect::new_from_x_y(
             self.position.x.into(),
@@ -200,7 +193,10 @@ impl Platform {
 
 impl Obstacle for Platform {
     fn right(&self) -> i16 {
-        self.bounding_boxes().last().unwrap_or(&Rect::default()).right()
+        self.bounding_boxes()
+            .last()
+            .unwrap_or(&Rect::default())
+            .right()
     }
 
     fn check_intersection(&self, boy: &mut RedHatBoy) {
@@ -218,15 +214,11 @@ impl Obstacle for Platform {
     }
 
     fn draw(&self, renderer: &Renderer) {
-        let platform = self
-            .sheet
-            .frames
-            .get("13.png")
-            .expect("13.png does not exist");
+        let platform = self.sheet.cell("13.png").expect("13.png does not exist");
 
-        renderer
-            .draw_image(
-                &self.image,
+        self.sheet
+            .draw(
+                renderer,
                 &Rect::new_from_x_y(
                     platform.frame.x.into(),
                     platform.frame.y.into(),
@@ -743,9 +735,13 @@ impl Game for WalkTheDog {
                 );
                 let background = engine::load_image("BG.png").await?;
                 let stone = engine::load_image("Stone.png").await?;
-                let platform = Platform::new(
-                    browser::fetch_json("tiles.json").await?.into_serde()?,
+                let tiles = browser::fetch_json("tiles.json").await?;
+                let sprite_sheet = Rc::new(SpriteSheet::new(
+                    tiles.into_serde()?,
                     engine::load_image("tiles.png").await?,
+                ));
+                let platform = Platform::new(
+                    sprite_sheet.clone(),
                     Point {
                         x: FIRST_PLATFORM,
                         y: LOW_PLATFORM,
@@ -754,6 +750,7 @@ impl Game for WalkTheDog {
 
                 let background_width = background.width() as i16;
                 Ok(Box::new(WalkTheDog::Loaded(Walk {
+                    obstacle_sheet: sprite_sheet,
                     boy: rhb,
                     backgrounds: [
                         Image::new(background.clone(), Point { x: 0, y: 0 }),
