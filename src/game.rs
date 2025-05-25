@@ -1,5 +1,6 @@
 use crate::engine::{Cell, Game, Image, KeyState, Point, Rect, Renderer, Sheet, SpriteSheet};
 use crate::game::red_hat_boy_states::*;
+use crate::segment::stone_and_platform;
 use crate::{browser, engine};
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -143,7 +144,7 @@ pub trait Obstacle {
     fn draw_bounding_box(&self, renderer: &Renderer);
 }
 
-struct Platform {
+pub(crate) struct Platform {
     sheet: Rc<SpriteSheet>,
     bounding_boxes: Vec<Rect>,
     sprites: Vec<Cell>,
@@ -151,7 +152,7 @@ struct Platform {
 }
 
 impl Platform {
-    fn new(
+    pub(crate) fn new(
         sheet: Rc<SpriteSheet>,
         position: Point,
         sprite_names: &[&str],
@@ -725,9 +726,6 @@ impl WalkTheDog {
     }
 }
 
-const LOW_PLATFORM: i16 = 420;
-const HIGH_PLATFORM: i16 = 375;
-const FIRST_PLATFORM: i16 = 370;
 #[async_trait(?Send)]
 impl Game for WalkTheDog {
     async fn initialize(&self) -> Result<Box<dyn Game>> {
@@ -744,23 +742,9 @@ impl Game for WalkTheDog {
                     tiles.into_serde()?,
                     engine::load_image("tiles.png").await?,
                 ));
-                let platform = Platform::new(
-                    sprite_sheet.clone(),
-                    Point {
-                        x: FIRST_PLATFORM,
-                        y: LOW_PLATFORM,
-                    },
-                    &["13.png", "14.png", "15.png"],
-                    &[
-                        Rect::new_from_x_y(0, 0, 60, 54),
-                        Rect::new_from_x_y(60, 0 , 384 - (60 * 2), 93),
-                        Rect::new_from_x_y(384 - 60, 0, 60, 54)
-                    ]
-                );
 
                 let background_width = background.width() as i16;
                 Ok(Box::new(WalkTheDog::Loaded(Walk {
-                    obstacle_sheet: sprite_sheet,
                     boy: rhb,
                     backgrounds: [
                         Image::new(background.clone(), Point { x: 0, y: 0 }),
@@ -772,10 +756,8 @@ impl Game for WalkTheDog {
                             },
                         ),
                     ],
-                    obstacles: vec![
-                        Box::new(Barrier::new(Image::new(stone, Point { x: 150, y: 546 }))),
-                        Box::new(platform),
-                    ],
+                    obstacles: stone_and_platform(stone, sprite_sheet.clone(), 0),
+                    obstacle_sheet: sprite_sheet,
                 })))
             }
             WalkTheDog::Loaded(_) => Err(anyhow!("Error: Game is already initialized!")),

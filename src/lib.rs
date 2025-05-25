@@ -2,6 +2,7 @@
 mod browser;
 mod engine;
 mod game;
+mod segment;
 
 use crate::engine::GameLoop;
 use crate::game::WalkTheDog;
