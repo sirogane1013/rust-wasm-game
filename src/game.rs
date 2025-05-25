@@ -145,49 +145,43 @@ pub trait Obstacle {
 
 struct Platform {
     sheet: Rc<SpriteSheet>,
+    bounding_boxes: Vec<Rect>,
+    sprites: Vec<Cell>,
     position: Point,
 }
 
 impl Platform {
-    fn new(sheet: Rc<SpriteSheet>, position: Point) -> Self {
-        Platform { sheet, position }
+    fn new(
+        sheet: Rc<SpriteSheet>,
+        position: Point,
+        sprite_names: &[&str],
+        bounding_boxes: &[Rect],
+    ) -> Self {
+        let sprites = sprite_names
+            .iter()
+            .filter_map(|sprite_name| sheet.cell(sprite_name).cloned())
+            .collect();
+        let bounding_boxes = bounding_boxes
+            .iter()
+            .map(|bounding_boxes| {
+                Rect::new_from_x_y(
+                    bounding_boxes.x() + position.x,
+                    bounding_boxes.y() + position.y,
+                    bounding_boxes.w,
+                    bounding_boxes.h,
+                )
+            })
+            .collect();
+        Platform {
+            sheet,
+            position,
+            sprites,
+            bounding_boxes,
+        }
     }
 
-    fn destination_box(&self) -> Rect {
-        let platform = self.sheet.cell("13.png").expect("13.png does not exist");
-
-        Rect::new_from_x_y(
-            self.position.x.into(),
-            self.position.y.into(),
-            (platform.frame.w * 3).into(),
-            platform.frame.h.into(),
-        )
-    }
-
-    fn bounding_boxes(&self) -> Vec<Rect> {
-        const X_OFFSET: f32 = 60.0;
-        const END_HEIGHT: f32 = 54.0;
-        let destination_box = self.destination_box();
-        let bounding_box_one = Rect::new_from_x_y(
-            destination_box.x(),
-            destination_box.y(),
-            X_OFFSET as i16,
-            END_HEIGHT as i16,
-        );
-        let bounding_box_two = Rect::new_from_x_y(
-            destination_box.x() + X_OFFSET as i16,
-            destination_box.y(),
-            destination_box.w - (X_OFFSET * 2.0) as i16,
-            destination_box.h,
-        );
-        let bounding_box_three = Rect::new_from_x_y(
-            destination_box.x() + destination_box.w - X_OFFSET as i16,
-            destination_box.y(),
-            X_OFFSET as i16,
-            END_HEIGHT as i16,
-        );
-
-        vec![bounding_box_one, bounding_box_two, bounding_box_three]
+    fn bounding_boxes(&self) -> &Vec<Rect> {
+        &self.bounding_boxes
     }
 }
 
@@ -214,24 +208,34 @@ impl Obstacle for Platform {
     }
 
     fn draw(&self, renderer: &Renderer) {
-        let platform = self.sheet.cell("13.png").expect("13.png does not exist");
-
-        self.sheet
-            .draw(
-                renderer,
-                &Rect::new_from_x_y(
-                    platform.frame.x.into(),
-                    platform.frame.y.into(),
-                    (platform.frame.w * 3).into(),
-                    platform.frame.h.into(),
-                ),
-                &self.destination_box(),
-            )
-            .expect("failed to draw platform");
+        let mut x = 0;
+        self.sprites.iter().for_each(|sprite| {
+            self.sheet
+                .draw(
+                    renderer,
+                    &Rect::new_from_x_y(
+                        sprite.frame.x,
+                        sprite.frame.y,
+                        sprite.frame.w,
+                        sprite.frame.h,
+                    ),
+                    &Rect::new_from_x_y(
+                        self.position.x + x,
+                        self.position.y,
+                        sprite.frame.w,
+                        sprite.frame.h,
+                    ),
+                )
+                .expect("failed to draw sprite.");
+            x += sprite.frame.w;
+        });
     }
 
     fn move_horizontally(&mut self, x: i16) {
         self.position.x += x;
+        self.bounding_boxes
+            .iter_mut()
+            .for_each(|bounding_box| bounding_box.set_x(bounding_box.position.x + x))
     }
 
     fn draw_bounding_box(&self, renderer: &Renderer) {
@@ -746,6 +750,12 @@ impl Game for WalkTheDog {
                         x: FIRST_PLATFORM,
                         y: LOW_PLATFORM,
                     },
+                    &["13.png", "14.png", "15.png"],
+                    &[
+                        Rect::new_from_x_y(0, 0, 60, 54),
+                        Rect::new_from_x_y(60, 0 , 384 - (60 * 2), 93),
+                        Rect::new_from_x_y(384 - 60, 0, 60, 54)
+                    ]
                 );
 
                 let background_width = background.width() as i16;
