@@ -3,6 +3,7 @@ mod browser;
 mod engine;
 mod game;
 mod segment;
+mod sound;
 
 use crate::engine::GameLoop;
 use crate::game::WalkTheDog;
