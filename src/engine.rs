@@ -1,4 +1,4 @@
-use crate::browser;
+use crate::{browser, sound};
 use crate::browser::LoopClosure;
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -12,7 +12,7 @@ use std::rc::Rc;
 use std::sync::Mutex;
 use wasm_bindgen::closure::Closure;
 use wasm_bindgen::{JsCast, JsValue};
-use web_sys::{CanvasRenderingContext2d, HtmlImageElement};
+use web_sys::{AudioBuffer, AudioContext, CanvasRenderingContext2d, HtmlImageElement};
 
 #[derive(Deserialize, Clone)]
 pub struct SheetRect {
@@ -348,5 +348,35 @@ fn process_input(state: &mut KeyState, keyevent_receiver: &mut UnboundedReceiver
                 KeyPress::KeyDown(evt) => state.set_pressed(&evt.code(), evt),
             },
         }
+    }
+}
+
+#[derive(Clone)]
+pub struct Audio {
+    context: AudioContext,
+}
+
+#[derive(Clone)]
+pub struct Sound {
+    buffer: AudioBuffer,
+}
+
+impl Audio {
+    pub fn new() -> Result<Self> {
+        Ok(Audio {
+            context: sound::create_audio_context()?,
+        })
+    }
+
+    pub async fn load_sound(&self, file_name: &str) -> Result<Sound> {
+        let array_buffer = browser::fetch_array_buffer(file_name).await?;
+        let audio_buffer = sound::decode_audio_data(&self.context, &array_buffer).await?;
+        Ok(Sound {
+            buffer: audio_buffer,
+        })
+    }
+
+    pub fn play_sound(&self, sound: &Sound) -> Result<()> {
+        sound::play_sound(&self.context, &sound.buffer)
     }
 }
