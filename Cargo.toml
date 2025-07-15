@@ -57,6 +57,9 @@ features = [
     "AudioBuffer",
     "AudioBufferSourceNode",
     "AudioDestinationNode",
+    "GainNode",
+    "GainOptions",
+    "BaseAudioContext",
 ]
 
 [dependencies.serde]
