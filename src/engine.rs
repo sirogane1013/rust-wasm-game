@@ -12,7 +12,7 @@ use std::rc::Rc;
 use std::sync::Mutex;
 use wasm_bindgen::closure::Closure;
 use wasm_bindgen::{JsCast, JsValue};
-use web_sys::{AudioBuffer, AudioContext, CanvasRenderingContext2d, HtmlImageElement};
+use web_sys::{AudioBuffer, AudioContext, CanvasRenderingContext2d, HtmlElement, HtmlImageElement};
 
 #[derive(Deserialize, Clone)]
 pub struct SheetRect {
@@ -383,4 +383,14 @@ impl Audio {
     pub fn play_looping_sound(&self, sound: &Sound) -> Result<()> {
         sound::play_sound(&self.context, &sound.buffer, sound::LOOPING::YES)
     }
+}
+
+pub fn add_click_handler(elem: HtmlElement) -> UnboundedReceiver<()> {
+    let (mut click_sender, click_receiver) = unbounded();
+    let on_click = browser::closure_wrap(Box::new(move || {
+        click_sender.start_send(()).expect("Failed to start send");
+    }) as Box<dyn FnMut()>);
+    elem.set_onclick(Some(on_click.as_ref().unchecked_ref()));
+    on_click.forget();
+    click_receiver
 }
