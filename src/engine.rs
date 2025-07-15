@@ -1,5 +1,5 @@
-use crate::{browser, sound};
 use crate::browser::LoopClosure;
+use crate::{browser, sound};
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use futures::channel::mpsc::{unbounded, UnboundedReceiver};

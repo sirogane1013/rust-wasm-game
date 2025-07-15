@@ -629,7 +629,11 @@ mod red_hat_boy_states {
 
         pub fn jump(self) -> RedHatBoyState<Jumping> {
             RedHatBoyState {
-                context: self.context.set_vertical_velocity(JUMP_SPEED).reset_frame().play_jump_sound(),
+                context: self
+                    .context
+                    .set_vertical_velocity(JUMP_SPEED)
+                    .reset_frame()
+                    .play_jump_sound(),
                 _state: Jumping {},
             }
         }
