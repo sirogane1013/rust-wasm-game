@@ -774,6 +774,8 @@ impl Game for WalkTheDog {
             WalkTheDog::Loading => {
                 let audio = Audio::new()?;
                 let jump_sound = audio.load_sound("SFX_Jump_23.mp3").await?;
+                let background_music = audio.load_sound("background_song.mp3").await?;
+                audio.play_looping_sound(&background_music)?;
                 let rhb = RedHatBoy::new(
                     browser::fetch_json("rhb.json").await?.into_serde()?,
                     engine::load_image("rhb.png").await?,

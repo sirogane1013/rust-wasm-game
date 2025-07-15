@@ -31,5 +31,6 @@ module.exports = {
     experiments: {
         asyncWebAssembly: true,
         syncWebAssembly: true
-    }
+    },
+    performance: { hints: false } // asset size limit の WARNING を抑制
 };
