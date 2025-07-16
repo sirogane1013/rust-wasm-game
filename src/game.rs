@@ -8,7 +8,9 @@ use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use rand::prelude::*;
 use serde::Deserialize;
+use std::io::Read;
 use std::rc::Rc;
+use web_sys::console::assert;
 use web_sys::HtmlImageElement;
 
 const HEIGHT: i16 = 600;
@@ -20,20 +22,6 @@ const OBSTACLE_BUFFER: i16 = 20;
 pub struct WalkTheDog {
     machine: Option<WalkTheDogStateMachine>,
 }
-
-enum WalkTheDogStateMachine {
-    Ready(WalkTheDogState<Ready>),
-    Walking(WalkTheDogState<Walking>),
-    GameOver(WalkTheDogState<GameOver>),
-}
-
-struct WalkTheDogState<T> {
-    _state: T,
-    walk: Walk,
-}
-struct Ready;
-struct Walking;
-struct GameOver;
 
 impl WalkTheDog {
     pub fn new() -> Self {
@@ -99,63 +87,159 @@ impl Game for WalkTheDog {
     }
 
     fn update(&mut self, key_state: &KeyState) {
-        if let WalkTheDog::Loaded(walk) = self {
-            if key_state.is_pressed("ArrowDown") {
-                walk.boy.slide();
-            }
-            if key_state.is_pressed("ArrowUp") {}
-            if key_state.is_pressed("ArrowRight") {
-                walk.boy.run_right();
-            }
-            if key_state.is_pressed("ArrowLeft") {}
-            if key_state.is_pressed("Space") {
-                walk.boy.jump();
-            }
-
-            walk.boy.update();
-
-            let velocity = walk.velocity();
-
-            let [first_background, second_background] = &mut walk.backgrounds;
-            first_background.move_horizontally(velocity);
-            second_background.move_horizontally(velocity);
-            if first_background.right() < 0 {
-                first_background.set_x(second_background.right())
-            }
-            if second_background.right() < 0 {
-                second_background.set_x(first_background.right())
-            }
-
-            walk.obstacles.retain(|obstacle| obstacle.right() > 0);
-
-            walk.obstacles.iter_mut().for_each(|obstacle| {
-                obstacle.move_horizontally(velocity);
-                obstacle.check_intersection(&mut walk.boy)
-            });
-
-            if walk.timeline < TIMELINE_MINIMUM {
-                walk.generate_next_segment()
-            } else {
-                walk.timeline += velocity;
-            }
+        if let Some(machine) = self.machine.take() {
+            self.machine.replace(machine.update(key_state));
+            //
+            // if key_state.is_pressed("ArrowDown") {
+            //     walk.boy.slide();
+            // }
+            // if key_state.is_pressed("ArrowUp") {}
+            // if key_state.is_pressed("ArrowRight") {
+            //     walk.boy.run_right();
+            // }
+            // if key_state.is_pressed("ArrowLeft") {}
+            // if key_state.is_pressed("Space") {
+            //     walk.boy.jump();
+            // }
+            //
+            // walk.boy.update();
+            //
+            // let velocity = walk.velocity();
+            //
+            // let [first_background, second_background] = &mut walk.backgrounds;
+            // first_background.move_horizontally(velocity);
+            // second_background.move_horizontally(velocity);
+            // if first_background.right() < 0 {
+            //     first_background.set_x(second_background.right())
+            // }
+            // if second_background.right() < 0 {
+            //     second_background.set_x(first_background.right())
+            // }
+            //
+            // walk.obstacles.retain(|obstacle| obstacle.right() > 0);
+            //
+            // walk.obstacles.iter_mut().for_each(|obstacle| {
+            //     obstacle.move_horizontally(velocity);
+            //     obstacle.check_intersection(&mut walk.boy)
+            // });
+            //
+            // if walk.timeline < TIMELINE_MINIMUM {
+            //     walk.generate_next_segment()
+            // } else {
+            //     walk.timeline += velocity;
+            // }
         }
+        assert!(self.machine.is_some())
     }
 
     fn draw(&self, renderer: &Renderer) {
         renderer.clear(&Rect::new_from_x_y(0, 0, HEIGHT, HEIGHT));
 
-        if let WalkTheDog::Loaded(walk) = self {
-            walk.backgrounds.iter().for_each(|background| {
-                background
-                    .draw(renderer)
-                    .expect("Failed to draw background.");
-            });
-            walk.boy.draw(renderer);
-            walk.boy.draw_bounding_box(renderer);
-            walk.obstacles.iter().for_each(|obstacle| {
-                obstacle.draw(renderer);
-                obstacle.draw_bounding_box(renderer);
-            });
+        if let Some(machine) = &self.machine {
+            machine.draw(renderer);
+        }
+    }
+}
+
+enum WalkTheDogStateMachine {
+    Ready(WalkTheDogState<Ready>),
+    Walking(WalkTheDogState<Walking>),
+    GameOver(WalkTheDogState<GameOver>),
+}
+
+impl WalkTheDogStateMachine {
+    fn update(self, key_state: &KeyState) -> Self {
+        match self {
+            WalkTheDogStateMachine::Ready(state) => state.update(key_state).into(),
+            WalkTheDogStateMachine::Walking(state) => state.update(key_state).into(),
+            WalkTheDogStateMachine::GameOver(state) => state.update().into(),
+        }
+    }
+
+    fn draw(&self, renderer: &Renderer) {
+        match self {
+            WalkTheDogStateMachine::Ready(state) => state.draw(renderer),
+            WalkTheDogStateMachine::Walking(state) => state.draw(renderer),
+            WalkTheDogStateMachine::GameOver(state) => state.draw(renderer),
+        }
+    }
+}
+
+struct WalkTheDogState<T> {
+    _state: T,
+    walk: Walk,
+}
+struct Ready;
+struct Walking;
+struct GameOver;
+enum ReadyEndState {
+    Complete(WalkTheDogState<Walking>),
+    Continue(WalkTheDogState<Ready>),
+}
+
+impl<T> WalkTheDogState<T> {
+    fn draw(&self, renderer: &Renderer) {
+        self.walk.draw(renderer);
+    }
+}
+
+impl WalkTheDogState<Ready> {
+    fn update(self, key_state: &KeyState) -> ReadyEndState {
+        if key_state.is_pressed("ArrowDown") {
+            ReadyEndState::Complete(self.start_running())
+        } else {
+            ReadyEndState::Continue(self)
+        }
+    }
+
+    fn start_running(mut self) -> WalkTheDogState<Walking> {
+        self.run_right();
+        WalkTheDogState {
+            _state: Walking,
+            walk: self.walk,
+        }
+    }
+
+    fn run_right(&mut self) {
+        self.walk.boy.run_right();
+    }
+}
+
+impl WalkTheDogState<Walking> {
+    fn update(self, key_state: &KeyState) -> Self {
+        self
+    }
+}
+
+impl WalkTheDogState<GameOver> {
+    fn update(self) -> Self {
+        self
+    }
+}
+
+impl From<WalkTheDogState<Ready>> for WalkTheDogStateMachine {
+    fn from(state: WalkTheDogState<Ready>) -> Self {
+        WalkTheDogStateMachine::Ready(state)
+    }
+}
+
+impl From<WalkTheDogState<Walking>> for WalkTheDogStateMachine {
+    fn from(state: WalkTheDogState<Walking>) -> Self {
+        WalkTheDogStateMachine::Walking(state)
+    }
+}
+
+impl From<WalkTheDogState<GameOver>> for WalkTheDogStateMachine {
+    fn from(state: WalkTheDogState<GameOver>) -> Self {
+        WalkTheDogStateMachine::GameOver(state)
+    }
+}
+
+impl From<ReadyEndState> for WalkTheDogStateMachine {
+    fn from(state: ReadyEndState) -> Self {
+        match state {
+            ReadyEndState::Complete(walking) => walking.into(),
+            ReadyEndState::Continue(ready) => ready.into(),
         }
     }
 }
@@ -170,6 +254,20 @@ pub struct Walk {
 }
 
 impl Walk {
+    fn draw(&self, renderer: &Renderer) {
+        self.backgrounds.iter().for_each(|background| {
+            background
+                .draw(renderer)
+                .expect("Failed to draw background.");
+        });
+        self.boy.draw(renderer);
+        self.boy.draw_bounding_box(renderer);
+        self.obstacles.iter().for_each(|obstacle| {
+            obstacle.draw(renderer);
+            obstacle.draw_bounding_box(renderer);
+        });
+    }
+
     fn velocity(&self) -> i16 {
         -self.boy.walk_speed()
     }
@@ -900,12 +998,6 @@ mod red_hat_boy_states {
         pub fn frame_name(&self) -> &str {
             FALLING_FRAME_NAME
         }
-    }
-}
-
-impl WalkTheDog {
-    pub fn new() -> Self {
-        WalkTheDog::Loading
     }
 }
 
