@@ -17,9 +17,147 @@ const TIMELINE_MINIMUM: i16 = 1000;
 
 const OBSTACLE_BUFFER: i16 = 20;
 
-pub enum WalkTheDog {
-    Loading,
-    Loaded(Walk),
+pub struct WalkTheDog {
+    machine: Option<WalkTheDogStateMachine>,
+}
+
+enum WalkTheDogStateMachine {
+    Ready(WalkTheDogState<Ready>),
+    Walking(WalkTheDogState<Walking>),
+    GameOver(WalkTheDogState<GameOver>),
+}
+
+struct WalkTheDogState<T> {
+    _state: T,
+    walk: Walk,
+}
+struct Ready;
+struct Walking;
+struct GameOver;
+
+impl WalkTheDog {
+    pub fn new() -> Self {
+        WalkTheDog { machine: None }
+    }
+}
+
+#[async_trait(?Send)]
+impl Game for WalkTheDog {
+    async fn initialize(&self) -> Result<Box<dyn Game>> {
+        match self.machine {
+            None => {
+                let audio = Audio::new()?;
+                let jump_sound = audio.load_sound("SFX_Jump_23.mp3").await?;
+                let background_music = audio.load_sound("background_song.mp3").await?;
+                audio.play_looping_sound(&background_music)?;
+                let rhb = RedHatBoy::new(
+                    browser::fetch_json("rhb.json").await?.into_serde()?,
+                    engine::load_image("rhb.png").await?,
+                    audio,
+                    jump_sound,
+                );
+                let background = engine::load_image("BG.png").await?;
+                let stone = engine::load_image("Stone.png").await?;
+                let tiles = browser::fetch_json("tiles.json").await?;
+                let sprite_sheet = Rc::new(SpriteSheet::new(
+                    tiles.into_serde()?,
+                    engine::load_image("tiles.png").await?,
+                ));
+
+                let background_width = background.width() as i16;
+
+                let starting_obstacles = stone_and_platform(stone.clone(), sprite_sheet.clone(), 0);
+                let timeline = rightmost(&starting_obstacles);
+
+                let machine = WalkTheDogStateMachine::Ready(WalkTheDogState {
+                    _state: Ready,
+                    walk: Walk {
+                        boy: rhb,
+                        backgrounds: [
+                            Image::new(background.clone(), Point { x: 0, y: 0 }),
+                            Image::new(
+                                background,
+                                Point {
+                                    x: background_width,
+                                    y: 0,
+                                },
+                            ),
+                        ],
+                        obstacles: starting_obstacles,
+                        obstacle_sheet: sprite_sheet,
+                        stone,
+                        timeline,
+                    },
+                });
+
+                Ok(Box::new(WalkTheDog {
+                    machine: Some(machine),
+                }))
+            }
+            Some(_) => Err(anyhow!("Error: Game is already initialized!")),
+        }
+    }
+
+    fn update(&mut self, key_state: &KeyState) {
+        if let WalkTheDog::Loaded(walk) = self {
+            if key_state.is_pressed("ArrowDown") {
+                walk.boy.slide();
+            }
+            if key_state.is_pressed("ArrowUp") {}
+            if key_state.is_pressed("ArrowRight") {
+                walk.boy.run_right();
+            }
+            if key_state.is_pressed("ArrowLeft") {}
+            if key_state.is_pressed("Space") {
+                walk.boy.jump();
+            }
+
+            walk.boy.update();
+
+            let velocity = walk.velocity();
+
+            let [first_background, second_background] = &mut walk.backgrounds;
+            first_background.move_horizontally(velocity);
+            second_background.move_horizontally(velocity);
+            if first_background.right() < 0 {
+                first_background.set_x(second_background.right())
+            }
+            if second_background.right() < 0 {
+                second_background.set_x(first_background.right())
+            }
+
+            walk.obstacles.retain(|obstacle| obstacle.right() > 0);
+
+            walk.obstacles.iter_mut().for_each(|obstacle| {
+                obstacle.move_horizontally(velocity);
+                obstacle.check_intersection(&mut walk.boy)
+            });
+
+            if walk.timeline < TIMELINE_MINIMUM {
+                walk.generate_next_segment()
+            } else {
+                walk.timeline += velocity;
+            }
+        }
+    }
+
+    fn draw(&self, renderer: &Renderer) {
+        renderer.clear(&Rect::new_from_x_y(0, 0, HEIGHT, HEIGHT));
+
+        if let WalkTheDog::Loaded(walk) = self {
+            walk.backgrounds.iter().for_each(|background| {
+                background
+                    .draw(renderer)
+                    .expect("Failed to draw background.");
+            });
+            walk.boy.draw(renderer);
+            walk.boy.draw_bounding_box(renderer);
+            walk.obstacles.iter().for_each(|obstacle| {
+                obstacle.draw(renderer);
+                obstacle.draw_bounding_box(renderer);
+            });
+        }
+    }
 }
 
 pub struct Walk {
@@ -768,118 +906,6 @@ mod red_hat_boy_states {
 impl WalkTheDog {
     pub fn new() -> Self {
         WalkTheDog::Loading
-    }
-}
-
-#[async_trait(?Send)]
-impl Game for WalkTheDog {
-    async fn initialize(&self) -> Result<Box<dyn Game>> {
-        match self {
-            WalkTheDog::Loading => {
-                let audio = Audio::new()?;
-                let jump_sound = audio.load_sound("SFX_Jump_23.mp3").await?;
-                let background_music = audio.load_sound("background_song.mp3").await?;
-                audio.play_looping_sound(&background_music)?;
-                let rhb = RedHatBoy::new(
-                    browser::fetch_json("rhb.json").await?.into_serde()?,
-                    engine::load_image("rhb.png").await?,
-                    audio,
-                    jump_sound,
-                );
-                let background = engine::load_image("BG.png").await?;
-                let stone = engine::load_image("Stone.png").await?;
-                let tiles = browser::fetch_json("tiles.json").await?;
-                let sprite_sheet = Rc::new(SpriteSheet::new(
-                    tiles.into_serde()?,
-                    engine::load_image("tiles.png").await?,
-                ));
-
-                let background_width = background.width() as i16;
-
-                let starting_obstacles = stone_and_platform(stone.clone(), sprite_sheet.clone(), 0);
-                let timeline = rightmost(&starting_obstacles);
-
-                Ok(Box::new(WalkTheDog::Loaded(Walk {
-                    boy: rhb,
-                    backgrounds: [
-                        Image::new(background.clone(), Point { x: 0, y: 0 }),
-                        Image::new(
-                            background,
-                            Point {
-                                x: background_width,
-                                y: 0,
-                            },
-                        ),
-                    ],
-                    obstacles: starting_obstacles,
-                    obstacle_sheet: sprite_sheet,
-                    stone,
-                    timeline,
-                })))
-            }
-            WalkTheDog::Loaded(_) => Err(anyhow!("Error: Game is already initialized!")),
-        }
-    }
-
-    fn update(&mut self, key_state: &KeyState) {
-        if let WalkTheDog::Loaded(walk) = self {
-            if key_state.is_pressed("ArrowDown") {
-                walk.boy.slide();
-            }
-            if key_state.is_pressed("ArrowUp") {}
-            if key_state.is_pressed("ArrowRight") {
-                walk.boy.run_right();
-            }
-            if key_state.is_pressed("ArrowLeft") {}
-            if key_state.is_pressed("Space") {
-                walk.boy.jump();
-            }
-
-            walk.boy.update();
-
-            let velocity = walk.velocity();
-
-            let [first_background, second_background] = &mut walk.backgrounds;
-            first_background.move_horizontally(velocity);
-            second_background.move_horizontally(velocity);
-            if first_background.right() < 0 {
-                first_background.set_x(second_background.right())
-            }
-            if second_background.right() < 0 {
-                second_background.set_x(first_background.right())
-            }
-
-            walk.obstacles.retain(|obstacle| obstacle.right() > 0);
-
-            walk.obstacles.iter_mut().for_each(|obstacle| {
-                obstacle.move_horizontally(velocity);
-                obstacle.check_intersection(&mut walk.boy)
-            });
-
-            if walk.timeline < TIMELINE_MINIMUM {
-                walk.generate_next_segment()
-            } else {
-                walk.timeline += velocity;
-            }
-        }
-    }
-
-    fn draw(&self, renderer: &Renderer) {
-        renderer.clear(&Rect::new_from_x_y(0, 0, HEIGHT, HEIGHT));
-
-        if let WalkTheDog::Loaded(walk) = self {
-            walk.backgrounds.iter().for_each(|background| {
-                background
-                    .draw(renderer)
-                    .expect("Failed to draw background.");
-            });
-            walk.boy.draw(renderer);
-            walk.boy.draw_bounding_box(renderer);
-            walk.obstacles.iter().for_each(|obstacle| {
-                obstacle.draw(renderer);
-                obstacle.draw_bounding_box(renderer);
-            });
-        }
     }
 }
 
