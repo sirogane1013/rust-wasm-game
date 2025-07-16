@@ -10,7 +10,6 @@ use rand::prelude::*;
 use serde::Deserialize;
 use std::io::Read;
 use std::rc::Rc;
-use web_sys::console::assert;
 use web_sys::HtmlImageElement;
 
 const HEIGHT: i16 = 600;
@@ -57,25 +56,22 @@ impl Game for WalkTheDog {
                 let starting_obstacles = stone_and_platform(stone.clone(), sprite_sheet.clone(), 0);
                 let timeline = rightmost(&starting_obstacles);
 
-                let machine = WalkTheDogStateMachine::Ready(WalkTheDogState {
-                    _state: Ready,
-                    walk: Walk {
-                        boy: rhb,
-                        backgrounds: [
-                            Image::new(background.clone(), Point { x: 0, y: 0 }),
-                            Image::new(
-                                background,
-                                Point {
-                                    x: background_width,
-                                    y: 0,
-                                },
-                            ),
-                        ],
-                        obstacles: starting_obstacles,
-                        obstacle_sheet: sprite_sheet,
-                        stone,
-                        timeline,
-                    },
+                let machine = WalkTheDogStateMachine::new(Walk {
+                    boy: rhb,
+                    backgrounds: [
+                        Image::new(background.clone(), Point { x: 0, y: 0 }),
+                        Image::new(
+                            background,
+                            Point {
+                                x: background_width,
+                                y: 0,
+                            },
+                        ),
+                    ],
+                    obstacles: starting_obstacles,
+                    obstacle_sheet: sprite_sheet,
+                    stone,
+                    timeline,
                 });
 
                 Ok(Box::new(WalkTheDog {
@@ -148,6 +144,10 @@ enum WalkTheDogStateMachine {
 }
 
 impl WalkTheDogStateMachine {
+    fn new(walk: Walk) -> Self {
+        WalkTheDogStateMachine::Ready(WalkTheDogState::new(walk))
+    }
+
     fn update(self, key_state: &KeyState) -> Self {
         match self {
             WalkTheDogStateMachine::Ready(state) => state.update(key_state).into(),
@@ -176,6 +176,10 @@ enum ReadyEndState {
     Complete(WalkTheDogState<Walking>),
     Continue(WalkTheDogState<Ready>),
 }
+enum WalkingEndState {
+    Complete(WalkTheDogState<GameOver>),
+    Continue(WalkTheDogState<Walking>),
+}
 
 impl<T> WalkTheDogState<T> {
     fn draw(&self, renderer: &Renderer) {
@@ -184,8 +188,16 @@ impl<T> WalkTheDogState<T> {
 }
 
 impl WalkTheDogState<Ready> {
-    fn update(self, key_state: &KeyState) -> ReadyEndState {
-        if key_state.is_pressed("ArrowDown") {
+    fn new(walk: Walk) -> Self {
+        WalkTheDogState {
+            _state: Ready,
+            walk,
+        }
+    }
+
+    fn update(mut self, key_state: &KeyState) -> ReadyEndState {
+        self.walk.boy.update();
+        if key_state.is_pressed("ArrowRight") {
             ReadyEndState::Complete(self.start_running())
         } else {
             ReadyEndState::Continue(self)
@@ -206,8 +218,54 @@ impl WalkTheDogState<Ready> {
 }
 
 impl WalkTheDogState<Walking> {
-    fn update(self, key_state: &KeyState) -> Self {
-        self
+    fn update(mut self, key_state: &KeyState) -> WalkingEndState {
+        if key_state.is_pressed("ArrowDown") {
+            self.walk.boy.slide();
+        }
+        if key_state.is_pressed("Space") {
+            self.walk.boy.jump();
+        }
+
+        self.walk.boy.update();
+
+        let walking_speed = self.walk.velocity();
+
+        let [first_background, second_background] = &mut self.walk.backgrounds;
+        first_background.move_horizontally(walking_speed);
+        second_background.move_horizontally(walking_speed);
+        if first_background.right() < 0 {
+            first_background.set_x(second_background.right())
+        }
+        if second_background.right() < 0 {
+            second_background.set_x(first_background.right())
+        }
+
+        self.walk.obstacles.retain(|obstacle| obstacle.right() > 0);
+
+        self.walk.obstacles.iter_mut().for_each(|obstacle| {
+            obstacle.move_horizontally(walking_speed);
+            obstacle.check_intersection(&mut self.walk.boy)
+        });
+
+        if self.walk.timeline < TIMELINE_MINIMUM {
+            self.walk.generate_next_segment()
+        } else {
+            self.walk.timeline += walking_speed;
+        }
+
+        if self.walk.knocked_out() {
+            WalkingEndState::Complete(self.end_game())
+        } else {
+            WalkingEndState::Continue(self)
+        }
+    }
+
+    fn end_game(self) -> WalkTheDogState<GameOver> {
+        browser::draw_ui("<button>New Game</button>");
+        WalkTheDogState {
+            _state: GameOver,
+            walk: self.walk
+        }
     }
 }
 
@@ -240,6 +298,15 @@ impl From<ReadyEndState> for WalkTheDogStateMachine {
         match state {
             ReadyEndState::Complete(walking) => walking.into(),
             ReadyEndState::Continue(ready) => ready.into(),
+        }
+    }
+}
+
+impl From<WalkingEndState> for WalkTheDogStateMachine {
+    fn from(state: WalkingEndState) -> Self {
+        match state {
+            WalkingEndState::Complete(game_over) => game_over.into(),
+            WalkingEndState::Continue(walking) => walking.into(),
         }
     }
 }
@@ -291,6 +358,10 @@ impl Walk {
         };
         self.timeline = rightmost(&next_obstacles);
         self.obstacles.append(&mut next_obstacles);
+    }
+
+    fn knocked_out(&self) -> bool {
+        self.boy.knocked_out()
     }
 }
 
@@ -399,6 +470,10 @@ impl RedHatBoy {
 
     fn knock_out(&mut self) {
         self.state_machine = self.state_machine.clone().transition(Event::KnockOut)
+    }
+
+    fn knocked_out(&self) -> bool {
+        self.state_machine.knocked_out()
     }
 }
 
@@ -637,6 +712,10 @@ impl RedHatBoyStateMachine {
             RedHatBoyStateMachine::Falling(state) => &state.context(),
             RedHatBoyStateMachine::KnockedOut(state) => state.context(),
         }
+    }
+
+    fn knocked_out(&self) -> bool {
+        matches!(self, RedHatBoyStateMachine::KnockedOut(_))
     }
 }
 
