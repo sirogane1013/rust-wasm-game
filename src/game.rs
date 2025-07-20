@@ -6,6 +6,7 @@ use crate::segment::{platform_and_stone, stone_and_platform};
 use crate::{browser, engine};
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
+use futures::channel::mpsc::UnboundedReceiver;
 use rand::prelude::*;
 use serde::Deserialize;
 use std::io::Read;
@@ -85,45 +86,6 @@ impl Game for WalkTheDog {
     fn update(&mut self, key_state: &KeyState) {
         if let Some(machine) = self.machine.take() {
             self.machine.replace(machine.update(key_state));
-            //
-            // if key_state.is_pressed("ArrowDown") {
-            //     walk.boy.slide();
-            // }
-            // if key_state.is_pressed("ArrowUp") {}
-            // if key_state.is_pressed("ArrowRight") {
-            //     walk.boy.run_right();
-            // }
-            // if key_state.is_pressed("ArrowLeft") {}
-            // if key_state.is_pressed("Space") {
-            //     walk.boy.jump();
-            // }
-            //
-            // walk.boy.update();
-            //
-            // let velocity = walk.velocity();
-            //
-            // let [first_background, second_background] = &mut walk.backgrounds;
-            // first_background.move_horizontally(velocity);
-            // second_background.move_horizontally(velocity);
-            // if first_background.right() < 0 {
-            //     first_background.set_x(second_background.right())
-            // }
-            // if second_background.right() < 0 {
-            //     second_background.set_x(first_background.right())
-            // }
-            //
-            // walk.obstacles.retain(|obstacle| obstacle.right() > 0);
-            //
-            // walk.obstacles.iter_mut().for_each(|obstacle| {
-            //     obstacle.move_horizontally(velocity);
-            //     obstacle.check_intersection(&mut walk.boy)
-            // });
-            //
-            // if walk.timeline < TIMELINE_MINIMUM {
-            //     walk.generate_next_segment()
-            // } else {
-            //     walk.timeline += velocity;
-            // }
         }
         assert!(self.machine.is_some())
     }
@@ -171,7 +133,9 @@ struct WalkTheDogState<T> {
 }
 struct Ready;
 struct Walking;
-struct GameOver;
+struct GameOver {
+    new_game_event: UnboundedReceiver<()>,
+}
 enum ReadyEndState {
     Complete(WalkTheDogState<Walking>),
     Continue(WalkTheDogState<Ready>),
@@ -179,6 +143,10 @@ enum ReadyEndState {
 enum WalkingEndState {
     Complete(WalkTheDogState<GameOver>),
     Continue(WalkTheDogState<Walking>),
+}
+enum GameOverEndState {
+    Complete(WalkTheDogState<Ready>),
+    Continue(WalkTheDogState<GameOver>),
 }
 
 impl<T> WalkTheDogState<T> {
@@ -261,17 +229,41 @@ impl WalkTheDogState<Walking> {
     }
 
     fn end_game(self) -> WalkTheDogState<GameOver> {
-        browser::draw_ui("<button>New Game</button>");
+        let receiver = browser::draw_ui("<button id='new_game'>New Game</button>")
+            .and_then(|_unit| browser::find_html_element_by_id("new_game"))
+            .map(|element| engine::add_click_handler(element))
+            .unwrap();
+
         WalkTheDogState {
-            _state: GameOver,
-            walk: self.walk
+            _state: GameOver {
+                new_game_event: receiver,
+            },
+            walk: self.walk,
         }
     }
 }
 
 impl WalkTheDogState<GameOver> {
-    fn update(self) -> Self {
-        self
+    fn update(mut self) -> GameOverEndState {
+        if self._state.new_game_pressed() {
+            GameOverEndState::Complete(self.new_game())
+        } else {
+            GameOverEndState::Continue(self)
+        }
+    }
+
+    fn new_game(self) -> WalkTheDogState<Ready> {
+        browser::hide_ui();
+        WalkTheDogState {
+            _state: Ready,
+            walk: Walk::reset(self.walk),
+        }
+    }
+}
+
+impl GameOver {
+    fn new_game_pressed(&mut self) -> bool {
+        matches!(self.new_game_event.try_next(), Ok(Some(())))
     }
 }
 
@@ -307,6 +299,15 @@ impl From<WalkingEndState> for WalkTheDogStateMachine {
         match state {
             WalkingEndState::Complete(game_over) => game_over.into(),
             WalkingEndState::Continue(walking) => walking.into(),
+        }
+    }
+}
+
+impl From<GameOverEndState> for WalkTheDogStateMachine {
+    fn from(state: GameOverEndState) -> Self {
+        match state {
+            GameOverEndState::Complete(ready) => ready.into(),
+            GameOverEndState::Continue(game_over) => game_over.into(),
         }
     }
 }
@@ -363,6 +364,20 @@ impl Walk {
     fn knocked_out(&self) -> bool {
         self.boy.knocked_out()
     }
+
+    fn reset(walk: Self) -> Self {
+        let starting_obstacles = stone_and_platform(walk.stone.clone(), walk.obstacle_sheet.clone(), 0);
+        let timeline = rightmost(&starting_obstacles);
+
+        Walk {
+            boy: RedHatBoy::reset(walk.boy),
+            backgrounds: walk.backgrounds,
+            obstacles: starting_obstacles,
+            obstacle_sheet: walk.obstacle_sheet,
+            stone: walk.stone,
+            timeline,
+        }
+    }
 }
 
 struct RedHatBoy {
@@ -378,6 +393,15 @@ impl RedHatBoy {
             sprite_sheet: sheet,
             image,
         }
+    }
+
+    fn reset(boy: Self) -> Self {
+        RedHatBoy::new(
+            boy.sprite_sheet,
+            boy.image,
+            boy.state_machine.context().audio.clone(),
+            boy.state_machine.context().jump_sound.clone(),
+        )
     }
 
     fn frame_name(&self) -> String {
@@ -815,8 +839,8 @@ mod red_hat_boy_states {
         pub frame: u8,
         pub position: Point,
         pub velocity: Point,
-        audio: Audio,
-        jump_sound: Sound,
+        pub audio: Audio,
+        pub jump_sound: Sound,
     }
 
     impl RedHatBoyContext {
