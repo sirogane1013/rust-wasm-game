@@ -55,6 +55,7 @@ features = [
     "KeyboardEvent",
     "AudioContext",
     "AudioBuffer",
+    "AudioBufferOptions",
     "AudioBufferSourceNode",
     "AudioDestinationNode",
     "GainNode",
@@ -79,7 +80,7 @@ features = ["js"]
 
 # These crates are used for running unit tests.
 [dev-dependencies]
-wasm-bindgen-test = "0.3.49"
+wasm-bindgen-test = "0.3.50"
 futures = "0.3.31"
 js-sys = "0.3.77"
 wasm-bindgen-futures = "0.4.49"
