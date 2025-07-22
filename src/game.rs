@@ -254,7 +254,9 @@ impl WalkTheDogState<GameOver> {
     }
 
     fn new_game(self) -> WalkTheDogState<Ready> {
-        browser::hide_ui();
+        if let Err(err) = browser::hide_ui() {
+            error!("Error hiding the browser {:#?}", err)
+        }
         WalkTheDogState {
             _state: Ready,
             walk: Walk::reset(self.walk),
