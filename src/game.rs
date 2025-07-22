@@ -9,8 +9,6 @@ use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use futures::channel::mpsc::UnboundedReceiver;
 use rand::prelude::*;
-use serde::Deserialize;
-use std::io::Read;
 use std::rc::Rc;
 use web_sys::HtmlImageElement;
 
@@ -30,6 +28,7 @@ impl WalkTheDog {
     }
 }
 
+#[allow(deprecated)]
 #[async_trait(?Send)]
 impl Game for WalkTheDog {
     async fn initialize(&self) -> Result<Box<dyn Game>> {
@@ -733,11 +732,11 @@ impl RedHatBoyStateMachine {
 
     fn context(&self) -> &RedHatBoyContext {
         match self {
-            RedHatBoyStateMachine::Idle(state) => &state.context(),
-            RedHatBoyStateMachine::Running(state) => &state.context(),
-            RedHatBoyStateMachine::Sliding(state) => &state.context(),
-            RedHatBoyStateMachine::Jumping(state) => &state.context(),
-            RedHatBoyStateMachine::Falling(state) => &state.context(),
+            RedHatBoyStateMachine::Idle(state) => state.context(),
+            RedHatBoyStateMachine::Running(state) => state.context(),
+            RedHatBoyStateMachine::Sliding(state) => state.context(),
+            RedHatBoyStateMachine::Jumping(state) => state.context(),
+            RedHatBoyStateMachine::Falling(state) => state.context(),
             RedHatBoyStateMachine::KnockedOut(state) => state.context(),
         }
     }
@@ -1018,7 +1017,7 @@ mod red_hat_boy_states {
             }
         }
 
-        pub fn land_on(mut self, position: i16) -> RedHatBoyState<Sliding> {
+        pub fn land_on(self, position: i16) -> RedHatBoyState<Sliding> {
             RedHatBoyState {
                 context: self.context.set_on(position),
                 _state: Sliding {},
@@ -1043,7 +1042,7 @@ mod red_hat_boy_states {
             self.context = self.context.update(JUMPING_FRAMES);
 
             if self.context.position.y >= FLOOR {
-                JumpingEndState::Complete(self.land_on(HEIGHT.into()))
+                JumpingEndState::Complete(self.land_on(HEIGHT))
             } else {
                 JumpingEndState::Jumping(self)
             }
@@ -1053,7 +1052,7 @@ mod red_hat_boy_states {
             JUMPING_FRAME_NAME
         }
 
-        pub fn land_on(mut self, position: i16) -> RedHatBoyState<Running> {
+        pub fn land_on(self, position: i16) -> RedHatBoyState<Running> {
             RedHatBoyState {
                 context: self.context.set_on(position),
                 _state: Running {},
@@ -1112,7 +1111,7 @@ fn rightmost(obstacle_list: &Vec<Box<dyn Obstacle>>) -> i16 {
     obstacle_list
         .iter()
         .map(|obstacle| obstacle.right())
-        .max_by(|x, y| x.cmp(&y))
+        .max_by(|x, y| x.cmp(y))
         .unwrap_or(0)
 }
 

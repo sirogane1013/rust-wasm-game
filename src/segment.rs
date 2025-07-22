@@ -68,7 +68,7 @@ fn create_floating_platform(sprite_sheet: Rc<SpriteSheet>, position: Point) -> P
     Platform::new(
         sprite_sheet,
         position,
-        &FLOATING_PLATFORM_SPRITES,
-        &FLOATING_PLATFORM_BOUNDING_BOXES,
+        FLOATING_PLATFORM_SPRITES,
+        FLOATING_PLATFORM_BOUNDING_BOXES,
     )
 }

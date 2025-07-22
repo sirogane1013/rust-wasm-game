@@ -1,24 +1,23 @@
 use anyhow::{anyhow, Result};
-use futures::future::err;
 use js_sys::ArrayBuffer;
 use std::future::Future;
 use wasm_bindgen::closure::{Closure, WasmClosure, WasmClosureFnOnce};
 use wasm_bindgen::{JsCast, JsValue};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{
-    CanvasRenderingContext2d, Document, Element, HtmlCanvasElement, HtmlElement, HtmlImageElement,
+    CanvasRenderingContext2d, Document, HtmlCanvasElement, HtmlElement, HtmlImageElement,
     Response, Window,
 };
 
 macro_rules! log {
     ( $( $t:tt)* ) => {
-        web_sys::console::log_1(&format!( $( $t )* ).into());
+        web_sys::console::log_1(&format!( $( $t )* ).into())
     };
 }
 
 macro_rules! error {
     ( $( $t:tt)* ) => {
-        web_sys::console::error_1(&format!( $( $t )* ).into());
+        web_sys::console::error_1(&format!( $( $t )* ).into())
     };
 }
 

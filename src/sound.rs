@@ -3,7 +3,7 @@ use js_sys::ArrayBuffer;
 use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{
-    AudioBuffer, AudioBufferSourceNode, AudioContext, AudioDestinationNode, AudioNode, GainNode,
+    AudioBuffer, AudioBufferSourceNode, AudioContext, AudioNode, GainNode,
     GainOptions,
 };
 
@@ -37,7 +37,7 @@ fn create_track_source(
     gain: f32,
 ) -> Result<AudioBufferSourceNode> {
     let track_source = create_buffer_source(ctx)?;
-    track_source.set_buffer(Some(&buffer));
+    track_source.set_buffer(Some(buffer));
     let gain = create_gain_node(ctx, gain)?;
     connect_audio_nodes(
         &connect_audio_nodes(&track_source, &gain)?,
@@ -52,7 +52,7 @@ pub async fn decode_audio_data(
     array_buffer: &ArrayBuffer,
 ) -> Result<AudioBuffer> {
     JsFuture::from(
-        ctx.decode_audio_data(&array_buffer)
+        ctx.decode_audio_data(array_buffer)
             .map_err(|e| anyhow!("Could not decode audio from array buffer {:#?}", e))?,
     )
     .await

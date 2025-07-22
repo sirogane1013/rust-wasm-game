@@ -4,7 +4,6 @@ use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use futures::channel::mpsc::{unbounded, UnboundedReceiver};
 use futures::channel::oneshot::channel;
-use futures::SinkExt;
 use serde::Deserialize;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -175,7 +174,7 @@ impl GameLoop {
             game_loop.last_frame = perf;
             game.draw(&renderer);
 
-            browser::request_animation_frame(f.borrow().as_ref().unwrap());
+            let _ = browser::request_animation_frame(f.borrow().as_ref().unwrap());
         }));
 
         browser::request_animation_frame(
@@ -272,6 +271,7 @@ impl Renderer {
             .map_err(|e| anyhow!("Failed to draw image: {:#?}", e))
     }
 
+    #[allow(deprecated)]
     pub fn draw_rect(&self, bounding_box: &Rect) {
         self.context.set_stroke_style(&JsValue::from_str("#FF0000"));
         self.context.begin_path();
@@ -293,13 +293,13 @@ pub async fn load_image(source: &str) -> Result<HtmlImageElement> {
     let error_tx = Rc::clone(&success_tx);
     let success_callback = browser::closure_once(move || {
         if let Some(success_tx) = success_tx.lock().ok().and_then(|mut opt| opt.take()) {
-            success_tx.send(Ok(()));
+            let _ = success_tx.send(Ok(()));
         }
     });
 
     let error_callback: Closure<dyn FnMut(JsValue)> = browser::closure_once(move |err| {
         if let Some(error_tx) = error_tx.lock().ok().and_then(|mut opt| opt.take()) {
-            error_tx.send(Err(anyhow!("Error loading image: {:#?}", err)));
+            let _ = error_tx.send(Err(anyhow!("Error loading image: {:#?}", err)));
         }
     });
 
