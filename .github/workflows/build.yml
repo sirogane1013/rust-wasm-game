@@ -7,11 +7,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: dtolnay/toolchain@v1
+      - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: 1.83.0
-          targets: wasm64-unknown-unknown
-          override: true
+          targets: wasm32-unknown-unknown
           components: clippy
       - uses: actions-rs/install@v0.1
         with:
